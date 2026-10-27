@@ -65,3 +65,17 @@ Follow AGENTS.md strictly. Do not invent API details; verify with docs or smoke 
 Treatment advice comes only from the knowledge base. Keep changes small, add tests, update
 DAILY_LOG.md, and save the session log to docs/muse-code-log/.
 ```
+
+## Git integration and publishing
+
+- Muse Code implements project changes; Codex independently reviews and verifies them. Do not rely on an implementation summary instead of inspecting the actual diff.
+- Do not claim to monitor Muse Code in the background. Run this workflow when the user asks to integrate a completed batch.
+- Before integration, inspect `git status`, branch and remote history, then review the complete unstaged and staged diffs. Preserve all existing local and remote changes.
+- Use a dedicated `integration/<task-slug>` branch based on the intended current `main`. Stage only the intended files. Do not use `git add -A` for routine change batches.
+- Scan candidate and staged files for secrets without printing values. Reject credentials, `.env`, agent authentication state, private farmer data, local databases, caches, and unintended generated evaluation outputs. Recheck `.gitignore` coverage.
+- Run the existing test suite and applicable syntax, import, configuration, type-check, and lint commands. Report commands and actual results; an unavailable required check is blocked, not passed.
+- Review the staged diff independently. Commit only scoped changes that pass the verification gate and comply with this file and the master specification. Update `docs/DAILY_LOG.md` and save a factual session log under `docs/muse-code-log/`.
+- Publish the verified integration branch first when remote access permits. Merge into `main` only after verification. Prefer the repository's pull-request flow. If branch protection requires a pull request or approval, stop for that human action.
+- Push `main` only when its current remote history is safely reconciled and the update is a normal fast-forward permitted by repository rules. Verify remote refs after every successful push.
+- Never force-push, rewrite shared history, bypass protections, discard uncommitted work, or put credentials in remote URLs. If histories diverge or have unrelated roots, inspect both sides and stop for a safe reconciliation decision unless the user has explicitly authorized a preserving merge.
+- Never make live Meta API calls, run live smoke tests, upload farmer media, change billing, or consume API credits as part of Git verification.
