@@ -2,6 +2,8 @@
 
 **Accessed:** 2026-10-27 (Asia/Kolkata). No API call or account billing page was accessed. Billing dashboard values below are user-reported and not independently verified.
 
+**Rechecked:** 2026-10-27. The official event page and current pricing documentation were revisited. The amount, eligibility by model/mode, allocation, and expiry of any participant credits remain **UNVERIFIED**; the current accessible event page does not provide these details.
+
 ## Reported account observations
 
 - User reports the Meta Model API dashboard showed **$149.65 in free credits** and **₹0.00 recorded spend**.
@@ -10,7 +12,7 @@
 
 ## What official sources establish
 
-- Meta's [hackathon page](https://dev.meta.ai/events/global-hackathon) says participants have access to free Model API credits, but does not specify the amount, per-account allocation, model coverage, expiry, or application order. It therefore does not establish that the reported balance covers Spark 1.3, SAM 3.1, Voice Transcribe, any Contributor variant, or third-party Glimmer hosting.
+- The current [official event page](https://dev.meta.ai/events/global-hackathon), rechecked on 2026-10-27, does not state a per-account credit amount, model/mode eligibility, allocation, or expiry. Meta Model API Terms §13.3 ([Terms](https://dev.meta.ai/legal/terms-of-service)) say promotional credits may be provided to accounts and may expire as specified in the account or Supplemental Managed Account Terms; this does not identify hackathon credits or the user's entitlement. No user account was accessed. Treat the previously reported $149.65 as account-specific and **UNVERIFIED** until confirmed in the official account interface and applicable terms.
 - Meta's [pricing page](https://dev.meta.ai/docs/pricing-rate-limits) describes pay-as-you-go costs: Spark Standard $1.25/1M input tokens, $0.15/1M cached input, $4.25/1M output; SAM 3.1 $2.50/1,000 images and $0.20/1,000 video frames (50-frame video minimum); Voice Transcribe $0.18/audio hour. These are current listed prices, not a guarantee about credits or the final amount charged for a particular request.
 - [Billing help](https://dev.meta.ai/help/billing/api-bill) says charges accrue with use and the payment method can be charged when the payment threshold is reached or on the monthly bill date.
 - [Spend-limit help](https://dev.meta.ai/help/billing/spend-limit-alert) explicitly says a spend-limit alert is **not a hard cap**; usage can exceed it and the user remains responsible for charges.
@@ -21,6 +23,13 @@
 ## Data mode and credit implications
 
 Meta's [pricing and rate limits](https://dev.meta.ai/docs/pricing-rate-limits) say Contributor mode allows submitted content to be used to train future Meta models for discounted rates; Standard mode does not use content to train Meta models. Meta's [Terms of Service](https://dev.meta.ai/legal/terms-of-service) still allow retention for service provision, legal compliance, safety/security, abuse and policy review. Zero Data Retention is separately enabled for qualified organizations and may have model/feature limits. For private farmer images, the project rule requires Standard/non-contributor mode; do not use Contributor mode even if it is cheaper or credits apply.
+
+| Exact question | Official source and passage | Status | Practical consequence |
+|---|---|---|---|
+| Does Standard mode mean zero retention? | [Terms](https://dev.meta.ai/legal/terms-of-service), §5.1 says Standard request content is not used to train Meta Models; §4.4 separately allows retention for service, legal compliance, rights, safety/security/abuse, and policy review/improvements. | **VERIFIED** (distinction); exact retention time **UNVERIFIED** | Do not promise deletion by Meta or describe Standard as ZDR. |
+| Is ZDR active for this account and model? | [ZDR help](https://dev.meta.ai/help/policies-and-privacy/zero-data-retention) describes eligibility/enablement and model or feature limitations. No account inspection was done. | **UNVERIFIED** | Treat ordinary Standard retention terms as applicable. |
+| Does the project have official confirmation that the user-reported $149.65 covers each intended model or mode? | [Hackathon page](https://dev.meta.ai/events/global-hackathon) and [pricing docs](https://dev.meta.ai/docs/pricing-rate-limits) do not establish the user's account entitlement. | **UNVERIFIED** | No test request; account entitlements must be confirmed separately before a future approved test. |
+| What controls promotional-credit amount and expiry? | Meta Model API Terms §13.3 ([Terms](https://dev.meta.ai/legal/terms-of-service)): promotional credits may be provided to Accounts; unused credits may expire within a set period stated in the Account or Supplemental Managed Account Terms. No account terms were accessed. | **VERIFIED** (general mechanism); user/event-specific amount, coverage, and expiry **UNVERIFIED** | Check the exact account entitlement before any separately approved test; do not infer it from the generic terms. |
 
 ## Conservative manual budget-check procedure before any future approved test
 
