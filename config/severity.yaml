@@ -1,0 +1,9 @@
+# Severity bands and recovery margin (spec B4/B5).
+# These are configurable heuristics, NOT validated agronomic thresholds.
+# The reply must always say severity is an estimate from one photo.
+bands:
+  # percent of leaf area affected: lesion_area / leaf_area * 100
+  low_max: 10.0
+  moderate_max: 30.0
+# Above moderate_max => high.
+recovery_margin_pp: 3.0

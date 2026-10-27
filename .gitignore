@@ -1,0 +1,72 @@
+# Secrets and local credentials — never commit keys or account data.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.token
+**/auth.json
+**/credentials.json
+
+# Local agent authentication/state and logs that may contain credentials.
+.muse/
+.codex/
+.meta/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Local databases and runtime state
+*.db
+*.sqlite
+*.sqlite3
+
+# Personal data: private farmer images, audio, video, or local uploads.
+farmer_images/
+private_data/
+data/private/
+uploads/
+recordings/
+*.ogg
+*.wav
+*.mp3
+*.m4a
+*.mp4
+
+# Evaluation data/results that should remain local.
+eval/data/dev/
+eval/data/test/
+eval/results/
+
+# Test / cache
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Image files are local data by default; explicitly reviewed project assets can
+# be unignored here (the authoritative poster below is intentionally retained).
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.heic
+*.avif
+*.tif
+*.tiff
+!docs/MydrakDeep.png

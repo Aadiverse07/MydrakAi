@@ -1,0 +1,10 @@
+# General safety card. The ONLY treatment-adjacent source shipped in Phase 0.
+# Contains no disease content, no treatment steps, no Hindi text (both pending
+# verified sourcing + native-speaker review). Replies attach safety_line and,
+# when referring, referral_text.
+id: general_safety
+safety_line: "Do not mix or spray chemicals without reading the product label or asking an expert."
+referral_text: "If it spreads or you are unsure, call the Kisan Call Centre or your local KVK (Krishi Vigyan Kendra)."
+retake_text: "The photo is too blurry or dark. Please take a close, clear photo of one leaf in daylight."
+sources: []
+reviewed_by: "TODO(verify: native-speaker reviewer name)"

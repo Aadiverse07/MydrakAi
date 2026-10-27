@@ -1,0 +1,38 @@
+# UNVERIFIED — Phase 0 placeholder. No model ID, endpoint, price, timeout, or
+# limit below has been confirmed against official Meta documentation.
+# TODO(verify): fill every value from official Meta docs + Day-0 smoke scripts,
+# then remove the UNVERIFIED markers. Nothing here has been tested.
+tier1:
+  name: "UNVERIFIED: tier-1 cheap diagnosis model"
+  model_id: "TODO(verify)"
+  endpoint: "TODO(verify)"
+  price_input_per_1m: "TODO(verify)"
+  price_output_per_1m: "TODO(verify)"
+  timeout_s: "TODO(verify)"
+  max_tokens: "TODO(verify)"
+  samples_per_case: 2
+tier2:
+  name: "UNVERIFIED: tier-2 strong reasoning model"
+  model_id: "TODO(verify)"
+  model_id_contributor: "TODO(verify)"
+  endpoint: "TODO(verify)"
+  price_input_per_1m: "TODO(verify)"
+  price_output_per_1m: "TODO(verify)"
+  timeout_s: "TODO(verify)"
+  max_tokens: "TODO(verify)"
+  max_calls_per_case: 1
+sam:
+  name: "UNVERIFIED: segmentation model"
+  model_id: "TODO(verify)"
+  endpoint: "TODO(verify)"
+  price_per_1k_images: "TODO(verify)"
+  timeout_s: "TODO(verify)"
+voice:
+  name: "UNVERIFIED: speech transcription model"
+  model_id: "TODO(verify)"
+  endpoint: "TODO(verify)"
+  price_per_1k_minutes: "TODO(verify)"
+  timeout_s: "TODO(verify)"
+glimmer_host:
+  # UNVERIFIED: local inference vs hosted provider undecided (spec C4).
+  choice: "TODO(verify: local | fireworks | together | openrouter)"

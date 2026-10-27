@@ -1,0 +1,16 @@
+# Decider weights and policy thresholds (spec B3).
+# UNVERIFIED placeholder values: sum of weights is 1. Tune on eval/data/dev
+# only; never tune on eval/data/test (spec B3 tuning discipline).
+weights:
+  s1_agreement: 0.25
+  s2_kb_match: 0.25
+  s3_quality: 0.25
+  s4_stated_confidence: 0.25
+# TODO(verify): accept, agree_min, quality_min, max_followups are initial
+# placeholders. Confirm/retune on dev data in the Decider phase.
+accept: 0.7
+agree_min: 0.5
+quality_min: 0.4
+max_followups: 2
+max_escalations_per_case: 1
+max_retries_per_call: 2
