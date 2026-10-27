@@ -4,6 +4,27 @@
 
 **Rechecked:** 2026-10-27. The official event page and current pricing documentation were revisited. The amount, eligibility by model/mode, allocation, and expiry of any participant credits remain **UNVERIFIED**; the current accessible event page does not provide these details.
 
+## Phase 2 / SAM 3.1 planning status
+
+SAM 3.1 is **NOT IMPLEMENTED**. Phase 2 planning and offline/mock parser work
+with synthetic fixtures only are authorized; no API call, upload, credential
+test, or credit use is authorized. The official pricing page lists SAM at
+$2.50 per 1,000 images and $0.20 per 1,000 video frames, with a 50-frame
+minimum for a video request. The official event page mentions SAM 3.1 among
+the hackathon models but does not state the user's account credit balance,
+SAM eligibility, allocation, or expiry. Therefore account-level credit
+eligibility for SAM remains **UNVERIFIED**. Published price is not an estimate
+of this user's out-of-pocket cost and does not establish credit coverage.
+
+SAM-specific still-image media limits and account-/SAM-specific retention or
+ZDR status are also **UNVERIFIED**. Generic Meta file limits are not assumed to
+apply to SAM. Standard mode's no-training term is not a zero-retention promise;
+ZDR requires separate organization-level enablement and may vary by model.
+Before any separately approved external test, verify the account's exact credit
+terms, charges/payment settings, model route, rights and privacy disclosures.
+The spend-limit alert remains a notification, not a hard cap. This planning
+authorization does not authorize that future test.
+
 ## Reported account observations
 
 - User reports the Meta Model API dashboard showed **$149.65 in free credits** and **₹0.00 recorded spend**.
@@ -29,6 +50,8 @@ Meta's [pricing and rate limits](https://dev.meta.ai/docs/pricing-rate-limits) s
 | Does Standard mode mean zero retention? | [Terms](https://dev.meta.ai/legal/terms-of-service), §5.1 says Standard request content is not used to train Meta Models; §4.4 separately allows retention for service, legal compliance, rights, safety/security/abuse, and policy review/improvements. | **VERIFIED** (distinction); exact retention time **UNVERIFIED** | Do not promise deletion by Meta or describe Standard as ZDR. |
 | Is ZDR active for this account and model? | [ZDR help](https://dev.meta.ai/help/policies-and-privacy/zero-data-retention) describes eligibility/enablement and model or feature limitations. No account inspection was done. | **UNVERIFIED** | Treat ordinary Standard retention terms as applicable. |
 | Does the project have official confirmation that the user-reported $149.65 covers each intended model or mode? | [Hackathon page](https://dev.meta.ai/events/global-hackathon) and [pricing docs](https://dev.meta.ai/docs/pricing-rate-limits) do not establish the user's account entitlement. | **UNVERIFIED** | No test request; account entitlements must be confirmed separately before a future approved test. |
+| Do the user's event credits cover SAM 3.1, and what are the amount and expiry? | The [official event page](https://dev.meta.ai/events/global-hackathon) names SAM 3.1 but gives no account-specific amount, SAM eligibility, allocation, or expiry; the [pricing page](https://dev.meta.ai/docs/pricing-rate-limits) states prices, not an entitlement. | **UNVERIFIED** | Do not infer credit coverage from the event page or reported dashboard balance. No SAM request or credential check. |
+| Are SAM-specific image limits and ZDR/retention status established? | [SAM overview](https://dev.meta.ai/docs/sam/overview) does not state still-image payload limits. [Terms](https://dev.meta.ai/legal/terms-of-service), §§4.4 and 5.1, permit retention for defined purposes while excluding Standard data from training. [ZDR help](https://dev.meta.ai/help/policies-and-privacy/zero-data-retention) requires separately enabled qualified-account status and says model support may vary. | **UNVERIFIED** (SAM limits and account-/SAM-specific status) | Do not pass private media externally or claim ZDR; generic file limits are not SAM-specific evidence. |
 | What controls promotional-credit amount and expiry? | Meta Model API Terms §13.3 ([Terms](https://dev.meta.ai/legal/terms-of-service)): promotional credits may be provided to Accounts; unused credits may expire within a set period stated in the Account or Supplemental Managed Account Terms. No account terms were accessed. | **VERIFIED** (general mechanism); user/event-specific amount, coverage, and expiry **UNVERIFIED** | Check the exact account entitlement before any separately approved test; do not infer it from the generic terms. |
 
 ## Conservative manual budget-check procedure before any future approved test

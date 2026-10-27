@@ -1,4 +1,4 @@
-# Mydrak AI v3 — architecture (Phase 0 snapshot)
+# Mydrak AI v3 — architecture (foundation and Phase 1 snapshot)
 
 Source: `docs/MydrakDeepseekreformed.pdf`, Part B. This file summarizes the
 planned pipeline; nothing below is implemented yet except the pure foundation
@@ -60,3 +60,36 @@ clients, SAM client, and production senders remain NOT implemented.
 
 Telegram bot, audio pipeline, model clients, SAM client/overlay rendering,
 trace DB, eval harness runs, dashboard, replay mode, failure-injection suite.
+
+## Phase 2 authorization boundary — planning only
+
+Phase 2 planning and offline/mock parser work are authorized. **SAM 3.1 is not
+implemented**: this repository has no SAM client, outbound request, media
+upload, or production parser. Planning may describe and verify interfaces from
+official documentation; parser work, if separately undertaken within this
+phase, must use synthetic fixtures and run without network access. No farmer
+media, credentials, or personal data may be used in offline fixtures.
+
+The official SAM documentation describes model ID `sam-3.1` on the Responses
+API, a text concept prompt plus image/video part, and box/mask output. The
+official output is special-token text with frame/object records, boxes, and
+encoded masks; it is not the local `sam/severity.py` interface. Generic Meta
+file handling lists image MIME types and size limits, but those are not
+confirmed as SAM-specific. SAM-specific still-image formats, dimensions,
+payload limits, and any applicable account credit entitlement remain
+**UNVERIFIED**. See
+[`verification/official_meta_api_matrix.md`](verification/official_meta_api_matrix.md)
+and [`verification/credit_protection.md`](verification/credit_protection.md).
+
+Any future outbound SAM operation requires separate authorization and must be
+blocked before request construction reaches a network, upload, or SDK boundary
+unless all policy checks pass: Standard/non-contributor route verified for the
+actual request; rights and provenance verified; user authorization and privacy
+notice established; and billing/credit eligibility confirmed. `DATA_POLICY`
+and caller-supplied booleans are not evidence of consent, rights, provider
+routing, account eligibility, or ZDR. The existing local privacy gate is not
+yet wired to an outbound sender. Standard mode's no-training statement does
+not guarantee zero retention; account- and SAM-specific ZDR/retention status
+remains **UNVERIFIED**. Until those checks are independently established, all
+private farmer images, audio, and derived personal data remain blocked from
+external processing.

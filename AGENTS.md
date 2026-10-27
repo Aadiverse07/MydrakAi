@@ -1,8 +1,10 @@
-# Mydrak AI v3 — agent rules (Phase 0)
+# Mydrak AI v3 — agent rules
 
 Source of truth: `docs/MydrakDeepseekreformed.pdf` (Final Master Specification).
 Supporting reference: `docs/MydrakDeep.png`. If code and spec disagree,
-ask or propose a spec change. Current phase: **Phase 0 (foundation only)**.
+ask or propose a spec change. Current authorized work: **Phase 2 planning and
+offline/mock parser work only**. SAM integration is **NOT IMPLEMENTED**. No
+outbound model integration, upload, live test, or credit use is authorized.
 
 ## Orientation
 
@@ -19,8 +21,10 @@ touch, and the acceptance test before editing.
 - Export or save the session log to `docs/muse-code-log/` at the end of each session.
 - Update `docs/DAILY_LOG.md`: what changed, what is broken, what is next.
 - If blocked for more than 20 minutes, stop and report the blocker with two options.
-- Phase 0 only: do not start the Telegram bot, model integrations, SAM
-  integration, or dashboard implementation.
+- Do not start Telegram, any model client, SAM integration, or dashboard
+  implementation without separate explicit authorization. Phase 2 planning and
+  offline/mock parser work using synthetic fixtures are authorized; they must
+  not make network requests or transmit media.
 
 ## Correctness and honesty
 
@@ -41,7 +45,9 @@ touch, and the acceptance test before editing.
 
 - Secrets only in `.env`. Never commit keys, tokens, or farmer images.
 - Respect `DATA_POLICY`: private photos go only to the non-contributor model variant.
-- Never make a live model call or consume API credits during Phase 0.
+- Never make a live model call or consume API credits without separate explicit
+  authorization, verified eligibility/billing safeguards, and completed
+  privacy review. Planning and offline/mock parser work must remain no-network.
 - Do not send private farmer photographs to a model before verifying its
   applicable data policy and model variant.
 - Every external call has a timeout, at most 2 retries, and a defined fallback (B11).
