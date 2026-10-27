@@ -1,6 +1,6 @@
 # Official hackathon rules verification
 
-**Accessed:** 2026-10-27 (Asia/Kolkata). This report uses only primary event pages and the official Model API pages. The complete Official Rules document was not located or accessible during this review.
+**Accessed/rechecked:** 2026-10-27 (Asia/Kolkata). This report uses only primary event pages and the official Model API pages. The complete Official Rules document was not located or accessible during this review.
 
 ## Primary source status
 
@@ -17,6 +17,16 @@ Meta's [official hackathon page](https://dev.meta.ai/events/global-hackathon) an
 | Attribution, licensing, open source, repository | The accessible event page does not set repository visibility, ownership/licensing, attribution, or open-source requirements. | **UNVERIFIED**; requires Official Rules and waiver terms. |
 | Eligibility | Official event page states worldwide participation subject to local law, sanctions/export restrictions and exclusions, and excludes Meta/Cerebral Valley employees/contractors/interns, government-affiliated individuals and specified family/household members. | **PARTIALLY VERIFIED**; individual eligibility must be checked against full rules/waiver. |
 | Date changes | Event page says dates may change at Meta's sole discretion and changes will be posted on that page. | **VERIFIED** as an event-page statement; recheck before submission. |
+
+## Remaining verification blockers (rechecked)
+
+| Exact question | Official source and supporting section/passage | Status | Practical consequence |
+|---|---|---|---|
+| Where are the complete Official Rules and acceptance terms? | [Meta event page](https://dev.meta.ai/events/global-hackathon), immediately after the schedule, still says Official Rules “will be published before” the Oct 26, 2026 start and must be accepted by selected participants. The page as accessed Oct 27 does not expose the rules text. | **UNVERIFIED** | Do not infer full eligibility, permitted integrations, ownership, or submission requirements. Review the complete rules before claiming submission compliance. |
+| Does the event page define required deliverables and media limits? | The Meta event page lists Nov 4, 9:00 PM ET submissions but does not specify required form fields, artifact types, or demo duration in its accessible text. | **UNVERIFIED** | Keep artifact format and demo length as open planning items; do not treat the specification's pitch length as an organizer rule. |
+| Does the event page set exact Meta API credit amount, per-model/mode eligibility, or expiry? | The current [Meta event page](https://dev.meta.ai/events/global-hackathon) has no per-account credit amount or expiry statement; API [pricing docs](https://dev.meta.ai/docs/pricing-rate-limits) list rates, not participant entitlements. Terms §13.3 says promotional credit expiry may be stated in an account or Supplemental Managed Account Terms, neither of which was accessed. | **UNVERIFIED** | Credit coverage cannot be assumed for Spark, SAM, Voice, or Contributor requests. No live API call is authorized by these reports. |
+
+No official rules document was obtained on this recheck. The blocker remains open; this report is not a substitute for organizer terms or account-specific eligibility.
 
 ## Sources and dates accessed
 

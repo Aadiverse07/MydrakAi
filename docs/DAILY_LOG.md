@@ -22,3 +22,10 @@
 - What changed: documented Muse Code implementation/Codex verification gates in `AGENTS.md`; added `docs/verification/git_workflow.md`; reconciled the local foundation root and GitHub's independent LICENSE root on `integration/git-workflow`, preserving both commits; published the verified branch and fast-forwarded GitHub `main` to the verified result.
 - What is broken/unverified: no Git workflow blockers remain after the verified push. Meta API and hackathon verification blockers from Phase 0.1 remain unchanged; no live integration is authorized.
 - What is next: continue with the remaining official rules/credit verification and fail-closed data-policy work before planning any live API test.
+
+## 2026-10-27 — Phase 0.3: verification blockers and fail-closed data policy
+
+- What changed: rechecked official Meta terms, Contributor restrictions, speech-to-text documentation, and the event page; verified Hindi listing for Voice Transcribe and documented Standard/Contributor data handling. Added a pure, no-network policy gate for private/public-test classifications with explicit route, rights, provenance, authorization, and notice checks. Added unit tests and updated the existing verification reports and Phase 0 review.
+- What is broken/unverified: no outbound client exists or is wired to the gate. Full hackathon Official Rules, participant credit eligibility/expiry, account-specific billing/ZDR status, and Telegram OGG support/media limits remain unresolved. The product has no privacy notice or user authorization flow, so private processing remains blocked in practice.
+- Checks: recorded in `docs/muse-code-log/phase-0.3-verification-and-data-policy.md` after the local verification run. No Meta API calls, uploads, credentials, billing changes, or credit usage.
+- What is next: review the full official rules and credit terms when available; build any future sender only with a pre-transmission gate and verified route, legal rights, and user-facing privacy disclosures. No live API testing until blockers and product readiness are resolved.
