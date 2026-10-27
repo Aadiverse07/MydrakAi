@@ -44,6 +44,18 @@ Pure, network-independent, tested: `decider/signals.py` (`combine`),
 `reply/confidence.py`. All model IDs, endpoints, prices, and limits remain
 `UNVERIFIED` in `config/models.yaml`.
 
+## Phase 1 implemented (mock-only intake)
+
+`intake/adapter.py` (`process_intake`): accepts synthetic image *descriptors*
+(never raw bytes), validates format/dimensions/size against local test
+boundaries, runs the privacy gate (`privacy/data_policy.py`) before the
+deterministic mock diagnosis or the optional caller-supplied `sender` hook,
+and returns a structured response (MOCK-labeled findings, plain-word
+uncertainty, safety-card safety line + referral) with a privacy-safe trace
+(request ID, stages, decision outcome, timings; no bytes, credentials, or
+personal data). Blocked requests never invoke `sender`. Telegram intake, model
+clients, SAM client, and production senders remain NOT implemented.
+
 ## Deferred (later tasks T02-T19)
 
 Telegram bot, audio pipeline, model clients, SAM client/overlay rendering,
