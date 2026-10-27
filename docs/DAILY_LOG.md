@@ -19,6 +19,6 @@
 
 ## 2026-10-27 — Phase 0.2: verified Git integration policy
 
-- What changed: documented Muse Code implementation/Codex verification gates in `AGENTS.md`; added `docs/verification/git_workflow.md`; reconciled the local foundation root and GitHub's independent LICENSE root on `integration/git-workflow`, preserving both commits.
-- What is broken/unverified: remote publication and `main` integration have not been attempted yet; they depend on the staged review and GitHub permissions.
-- What is next: finish staged-diff review, publish the integration branch, then update `main` only if normal GitHub rules permit it.
+- What changed: documented Muse Code implementation/Codex verification gates in `AGENTS.md`; added `docs/verification/git_workflow.md`; reconciled the local foundation root and GitHub's independent LICENSE root on `integration/git-workflow`, preserving both commits; published the verified branch and fast-forwarded GitHub `main` to the verified result.
+- What is broken/unverified: no Git workflow blockers remain after the verified push. Meta API and hackathon verification blockers from Phase 0.1 remain unchanged; no live integration is authorized.
+- What is next: continue with the remaining official rules/credit verification and fail-closed data-policy work before planning any live API test.
