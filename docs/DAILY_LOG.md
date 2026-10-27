@@ -36,3 +36,11 @@
 - Checks: full suite **72 passed, 0 failed**; `compileall` clean; config parse OK; secret-pattern scan clean; `git diff --cached --check` clean. No live API calls, uploads, auth tests, or credit usage.
 - What is broken/unverified: Telegram intake, model/SAM clients, production senders, trace store, and dashboard remain NOT implemented. Official Rules, credit entitlement, ZDR, and media-limit blockers from Phase 0.3 are unchanged.
 - What is next: commit/push of this batch per the git workflow; then continue verification blockers before any live integration.
+
+## 2026-10-27 — Independent review of Phase 1 mock intake
+
+- What changed: independently reviewed the published Phase 1 commit and found trace/input-boundary defects: caller-controlled `source` entered traces, descriptor mappings accepted extra fields, unsupported-format errors echoed untrusted input, and malformed classification could raise `AttributeError`. Applied a local, uncommitted remediation in the intake adapter with regression tests; added exact-limit tests for the local dimensions/size bounds.
+- What is broken/unverified: the `sender` remains an arbitrary injected callback; repository code provides no production sender, network transport, Telegram SDK, or model SDK. Do not connect an external sender without the verified timeout/retry/fallback and privacy controls.
+- Checks: full suite **79 passed, 0 failed**; `compileall`, TOML/config YAML parsing, `.env` ignore/untracked checks, changed-file secret-pattern scan, AST import scan, and diff whitespace check all passed. `.env` exists but was not read.
+- Git ancestry: Phase 1 descends from Phase 0.3 and `main`; the merge ancestry preserves the original foundation and LICENSE root commits. The initial review ended with local remediation uncommitted; its later commit/push status is recorded in the follow-up handoff.
+- What is next: open a PR from the verified Phase 1 integration branch to `main` and follow required review/protection rules. Do not begin another feature phase or any live API work.

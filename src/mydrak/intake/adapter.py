@@ -91,6 +91,9 @@ def coerce_image(event: IntakeImage | Mapping[str, Any]) -> IntakeImage:
     if isinstance(event, IntakeImage):
         data = {"format": event.format, "width": event.width, "height": event.height, "size_bytes": event.size_bytes}
     elif isinstance(event, Mapping):
+        expected = {"format", "width", "height", "size_bytes"}
+        if set(event) != expected:
+            raise IntakeError("image descriptor must contain exactly format, width, height, and size_bytes")
         data = dict(event)
     else:
         raise IntakeError(f"intake event must be a mapping or IntakeImage, got {type(event).__name__}")
@@ -100,7 +103,7 @@ def coerce_image(event: IntakeImage | Mapping[str, Any]) -> IntakeImage:
         raise IntakeError("image 'format' must be a string")
     fmt = _FORMAT_ALIASES.get(raw_format.lower(), raw_format.lower())
     if fmt not in SUPPORTED_FORMATS:
-        raise IntakeError(f"unsupported image format: {raw_format!r} (expected one of {list(SUPPORTED_FORMATS)})")
+        raise IntakeError(f"unsupported image format (expected one of {list(SUPPORTED_FORMATS)})")
 
     for key in ("width", "height"):
         value = data.get(key)
@@ -141,12 +144,16 @@ def process_intake(
     data_class: DataClass = DataClass.PRIVATE,
     evidence: ProcessingEvidence | None = None,
     sender: Callable[[dict[str, Any]], None] | None = None,
-    source: str = "synthetic",
 ) -> IntakeResponse:
     """Run the mock-only intake flow and return a structured safe response."""
     request_id = uuid.uuid4().hex
     started = time.perf_counter()
     stages: list[dict[str, Any]] = []
+
+    if not isinstance(data_class, DataClass):
+        raise IntakeError("data classification must be a supported DataClass")
+    if evidence is not None and not isinstance(evidence, ProcessingEvidence):
+        raise IntakeError("processing evidence must be a ProcessingEvidence value")
 
     for key in ("safety_line", "referral_text"):
         if not safety_card.get(key):
@@ -161,13 +168,13 @@ def process_intake(
         policy = parse_data_policy(data_policy_value)
     except DataPolicyError as exc:
         _stage(stages, "policy_decision", "invalid_policy", (time.perf_counter() - t0) * 1000)
-        return _blocked(request_id, source, image, data_class, "invalid_policy", str(exc), safety_card, stages, started)
+        return _blocked(request_id, image, data_class, "invalid_policy", str(exc), safety_card, stages, started)
     gate_evidence = evidence if evidence is not None else ProcessingEvidence(provider_mode=ProviderMode.STANDARD)
     try:
         require_external_processing_allowed(policy, data_class, gate_evidence)
     except DataPolicyError as exc:
         _stage(stages, "policy_decision", "blocked", (time.perf_counter() - t0) * 1000)
-        return _blocked(request_id, source, image, data_class, policy.value, str(exc), safety_card, stages, started)
+        return _blocked(request_id, image, data_class, policy.value, str(exc), safety_card, stages, started)
     _stage(stages, "policy_decision", "allowed_mock", (time.perf_counter() - t0) * 1000)
 
     if sender is not None:
@@ -189,7 +196,7 @@ def process_intake(
     findings = mock_diagnose(image)
     _stage(stages, "mock_diagnosis", "ok", (time.perf_counter() - t0) * 1000)
 
-    trace = _trace(request_id, source, image, data_class, policy.value, "allowed_mock", None, stages, started)
+    trace = _trace(request_id, image, data_class, policy.value, "allowed_mock", None, stages, started)
     return IntakeResponse(
         request_id=request_id,
         status="mock_complete",
@@ -203,7 +210,6 @@ def process_intake(
 
 def _trace(
     request_id: str,
-    source: str,
     image: IntakeImage,
     data_class: DataClass,
     policy: str,
@@ -214,7 +220,6 @@ def _trace(
 ) -> dict[str, Any]:
     return {
         "request_id": request_id,
-        "source": source,
         "data_class": data_class.value,
         "policy": policy,
         "decision": decision,
@@ -232,7 +237,6 @@ def _trace(
 
 def _blocked(
     request_id: str,
-    source: str,
     image: IntakeImage,
     data_class: DataClass,
     policy: str,
@@ -241,7 +245,7 @@ def _blocked(
     stages: list[dict[str, Any]],
     started: float,
 ) -> IntakeResponse:
-    trace = _trace(request_id, source, image, data_class, policy, "blocked", reason, stages, started)
+    trace = _trace(request_id, image, data_class, policy, "blocked", reason, stages, started)
     return IntakeResponse(
         request_id=request_id,
         status="blocked",

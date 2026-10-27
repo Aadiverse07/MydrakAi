@@ -10,6 +10,7 @@ from unittest.mock import Mock
 import pytest
 
 from mydrak.intake.adapter import (
+    MAX_DIMENSION,
     MAX_IMAGE_BYTES,
     IntakeError,
     IntakeImage,
@@ -78,6 +79,28 @@ def test_dataclass_event_accepted():
     assert response.status == "mock_complete"
 
 
+def test_descriptor_accepts_documented_local_boundary_values():
+    image = coerce_image({
+        "format": "jpeg",
+        "width": MAX_DIMENSION,
+        "height": MAX_DIMENSION,
+        "size_bytes": MAX_IMAGE_BYTES,
+    })
+    assert image.width == MAX_DIMENSION
+    assert image.height == MAX_DIMENSION
+    assert image.size_bytes == MAX_IMAGE_BYTES
+
+
+def test_descriptor_rejects_dimension_above_local_boundary():
+    with pytest.raises(IntakeError, match="out of range"):
+        coerce_image({
+            "format": "jpeg",
+            "width": MAX_DIMENSION + 1,
+            "height": 1,
+            "size_bytes": 1,
+        })
+
+
 def test_mock_diagnosis_is_deterministic():
     first = run()
     second = run()
@@ -108,7 +131,9 @@ def test_trace_carries_stages_and_timings():
         {"format": "jpeg", "width": -5, "height": 100, "size_bytes": 1000},
         {"format": "jpeg", "width": True, "height": 100, "size_bytes": 1000},
         {"format": "jpeg", "width": 100, "height": 100, "size_bytes": 0},
+        {"format": "jpeg", "width": 100, "height": 100, "size_bytes": True},
         {"format": "jpeg", "width": 100, "height": 100, "size_bytes": MAX_IMAGE_BYTES + 1},
+        {"format": "jpeg", "width": 100, "height": 100, "size_bytes": 1000, "raw_image_bytes": b"local-only"},
         {"format": "jpeg", "width": 100, "height": 100, "size_bytes": "big"},
         {"format": "jpeg", "width": 100, "height": 100},
         "not-a-mapping",
@@ -125,6 +150,24 @@ def test_invalid_input_raises_before_policy_and_sender():
     with pytest.raises(IntakeError):
         run({"format": "bmp", "width": 10, "height": 10, "size_bytes": 10}, sender=sender)
     sender.assert_not_called()
+
+
+def test_unsupported_format_error_does_not_echo_untrusted_text():
+    with pytest.raises(IntakeError) as caught:
+        coerce_image({"format": "farmer@example.invalid", "width": 10, "height": 10, "size_bytes": 10})
+    assert "farmer@example.invalid" not in str(caught.value)
+
+
+def test_malformed_classification_fails_closed_before_sender():
+    sender = Mock()
+    with pytest.raises(IntakeError, match="classification"):
+        run(data_class="private", sender=sender)
+    sender.assert_not_called()
+
+
+def test_trace_does_not_accept_caller_controlled_source():
+    with pytest.raises(TypeError):
+        run(source="farmer@example.invalid")
 
 
 def test_missing_safety_text_refuses_to_reply():
@@ -226,6 +269,7 @@ def test_allowed_mock_invokes_sender_once_with_metadata_only():
         "height": 600,
         "size_bytes": 120_000,
     }
+    assert "source" not in response.trace
     _assert_no_bytes(payload)
 
 
