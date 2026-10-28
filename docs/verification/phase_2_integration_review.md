@@ -44,7 +44,7 @@ payload would have raised an unhandled `TypeError` instead of
 ## 3. Test evidence
 
 - Focused Phase 2 command: `python3 -m pytest tests/test_image_eval.py tests/test_offline_workflow.py tests/test_sam_grid.py tests/test_sam_output.py tests/test_sam_scores.py tests/test_vision_source.py tests/test_data_policy.py tests/test_mock_intake.py` — **221 passed**.
-- Full `python3 -m pytest`: **247 passed, 0 failed** (per-file counts
+- Full `python3 -m pytest`: **248 passed, 0 failed** (per-file counts
   reconciled: 15 grid functions incl. 2 external, 13 vision functions).
 - `python3 -m compileall -q src tests eval`: clean. `git diff --check`: clean.
 - Import scan: no network/SDK/DOTENV-adjacent imports in `src/` or `tests/`
@@ -80,7 +80,7 @@ Task 9 stop-decision are documented in-session.
 ## 7. Phase 2 verdict
 
 **READY TO CLOSE (OFFLINE SCOPE ONLY).** Every authorized offline behavior is
-implemented, tested (247 green), and honestly labeled; the one externally
+implemented, tested (248 green), and honestly labeled; the one externally
 added hardening improves the contract without expanding scope. Nothing in the
 offline scope is missing or red.
 
