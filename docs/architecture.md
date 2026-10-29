@@ -73,9 +73,12 @@ media, credentials, or personal data may be used in offline fixtures.
 The official SAM documentation describes model ID `sam-3.1` on the Responses
 API, a text concept prompt plus image/video part, and box/mask output. The
 official output is special-token text with frame/object records, boxes, and
-encoded masks; it is not the local `sam/severity.py` interface. Generic Meta
-file handling lists image MIME types and size limits, but those are not
-confirmed as SAM-specific. SAM-specific still-image formats, dimensions,
+encoded masks; it is not the local `sam/severity.py` interface. The existing
+`src/mydrak/sam/output.py` is an offline parser for a project-local synthetic
+fixture grammar only: it does not parse, validate, or establish compatibility
+with actual Meta SAM wire output, and the production SAM integration remains
+not implemented. Generic Meta file handling lists image MIME types and size
+limits, but those are not confirmed as SAM-specific. SAM-specific still-image formats, dimensions,
 payload limits, and any applicable account credit entitlement remain
 **UNVERIFIED**. See
 [`verification/official_meta_api_matrix.md`](verification/official_meta_api_matrix.md)

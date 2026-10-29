@@ -30,3 +30,21 @@
   passed, 0 failed**; `python3 -m compileall -q src tests` and
   `git diff --check` passed. Changes remain unstaged and uncommitted. No
   network/API calls, uploads, credentials, credits, or dependencies used.
+
+## Follow-up: offline mask-to-severity helper (2026-10-28, limited T08 subtask)
+
+- Added `mask_severity_pct(leaf, lesion)` in `src/mydrak/sam/severity.py`:
+  pure helper over validated `BinaryMask` inputs reusing `intersection()`
+  from `scores.py` (type/shape mismatches raise `SegmentationEvalError`).
+  Returns `100 * overlap / leaf_cells` unrounded, `None` on empty leaf
+  (matching `severity_pct`), `0.0` on zero overlap; lesion cells outside
+  the leaf ignored. Grid-based, project-local; no agronomic validation,
+  provider compatibility, or real-image accuracy claimed.
+- Tests: 5 new in `tests/test_severity.py` (4×4 fixture with 10 leaf /
+  3 overlap / 1 outside → `30.0`; empty leaf → `None`; no overlap →
+  `0.0`; shape mismatch + non-mask rejection) and 1 integration test in
+  `tests/test_sam_grid.py` (`synthetic-grid-v1` → converter → helper =
+  `50.0`). All fixtures synthetic.
+- Status (explicit): Phase 4 is **NOT FULLY CLOSED**; this does not close
+  Phase 4 or complete T08 (client + overlay scope outstanding); live SAM
+  remains **NO-GO**; no API credits used.

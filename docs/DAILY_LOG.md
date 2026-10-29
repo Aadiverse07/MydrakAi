@@ -1,5 +1,6 @@
 # Daily log
 
+
 ## 2026-10-27 — Phase 0: repository foundation
 
 - What changed: created minimum scaffold (AGENTS.md, README.md, pyproject.toml,
@@ -142,3 +143,239 @@
 
 - What changed: added `test_mask_payload_limit_enforced` (9-char valid payload accepted under default limits, rejected with `SamLimits(max_mask_chars=8)`; payload not echoed). No parser change needed. Readiness counts updated to 74/71. Recorded in `docs/muse-code-log/phase-3b-response-text-parser.md` (Phase 3D.1 section).
 - Checks: new file **74 passed**; synthetic file **71 passed**; full suite **322 passed, 0 failed**; `compileall`, TOML/YAML parse, `git diff --check` clean; secret-pattern count scan clean; `.env` ignored + untracked (metadata only). No API calls, uploads, credentials, credits, deps, staging, or commits.
+
+## 2026-10-28 — Phase 4B: offline SAM compatibility and safety gates
+
+- What changed: added synthetic coverage that preserves documented printable payload marker characters as opaque data and accepts a payload exactly at its configured local cap; updated SAM readiness and Meta API matrix with the current official grammar/parser/decoder documentation, distinguishing official facts from local limits and unresolved Base85 variant details; added a pre-live evidence checklist and one-request plan explicitly marked unauthorized. Updated the existing Phase 3 session log with this follow-up.
+- What remains broken/unverified: no SAM client, SSE assembler, decoder, live compatibility evidence, account model access/credits/expiry/payment state, hard spend cap, SAM-specific still-image limits, or completed privacy/authorization/retention gates. Live calls remain NO-GO. A spend alert is not a hard cap; one-call guard cannot guarantee zero billing.
+- Checks: response-text tests **75 passed**; synthetic parser tests **71 passed**; full suite **323 passed, 0 failed**; compileall and TOML/three-YAML parsing passed; `git diff --check` passed; added-line whitespace scan found 0; safe secret-pattern scan found 0; `.env` ignore/untracked state confirmed using Git metadata only.
+- What is next: continue offline compatibility work with synthetic fixtures and official parser interfaces only. Gather redacted account, billing, privacy, image-rights, and model-access evidence before seeking separate live-test authorization. No API calls, uploads, credentials, credits, dependency changes, or Git mutations.
+
+## 2026-10-28 — Phase 4B.1: readiness freshness-note correction
+
+- What changed: corrected one stale table row in `docs/verification/sam_live_integration_readiness.md` (§3, link-freshness entry) to record that Phase 4B rechecked the linked official pages on 2026-10-28 (§9) and that links must be rechecked again before any live step. Status stays UNVERIFIED; no claim that every link or detail is independently verified. No parser, test, or other documentation changes.
+- Checks: `git diff --check` clean; response-text tests **75 passed**; synthetic parser tests **71 passed**; full suite **323 passed, 0 failed**; compileall, TOML/YAML parse, secret-pattern count scan (0), `.env` ignored/untracked (metadata only) all observed. No API calls, uploads, credentials, credits, deps, staging, or commits. **Live SAM remains NO-GO.**
+
+## 2026-10-28 — Phase 4C: offline guard, mock transport, test log
+
+- What changed: added `src/mydrak/sam/guard.py` (default-off 5-attempt campaign guard, breaker trips on 5th, explicit reset + re-authorization, token never stored; cannot enforce billing) and `src/mydrak/sam/transport.py` (request/response types without image bytes, deterministic fake, default-is-fake, no live client, validate → count → dispatch-once → parse, timeouts to manual review, never retried) with `tests/test_sam_live_guard.py` (14 tests); created `docs/testing/phase-4c-test-log.jsonl` (schema + non-executed example only, zero executed/live records, no invented costs); added `docs/verification/phase-4c-privacy-notice-questions.md` (unresolved recipients/storage/retention/access/consent, no ZDR or deletion claims, notice not approved). Recorded in `docs/muse-code-log/phase-4c-offline-implementation.md`.
+- Checks: new file **14 passed** first run; full suite **337 passed, 0 failed**; `compileall`, TOML/YAML parse, `git diff --check`, untracked whitespace scan clean; secret-pattern count scan 0 in new files / 0 on added doc lines; `.env` ignored + untracked (metadata only). No API calls, uploads, credentials, credits, deps, staging, or commits. **Live SAM remains NO-GO.**
+
+## 2026-10-28 — Phase 4C.1: safety-gate hardening
+
+- What changed: durable file-backed guard budget (XDG-local JSON state, atomic writes, lock-mutex, fail-closed corruption/write failures, restart/recreation sharing, 8-thread contention tested); explicit local operator-gate authorization (single-use token fingerprints, campaign+scope binding, expiry, reuse/mismatch rejection; reset verifies distinctness, authorize records use — one self-found ordering defect fixed); `run_scan` accepts exactly `FakeSamTransport` (fabricated-flag subclasses rejected pre-send, pre-count); `MockScanResult` provenance wrapper enforced in constructor; cost-log schema disambiguated (null = unknown, 0 = verified zero only). Recorded in `docs/muse-code-log/phase-4c-1-safety-gate-hardening.md`.
+- Checks: guard/transport file **31 passed** (3 first-run failures investigated and fixed); full suite **354 passed, 0 failed**; `compileall`, TOML/YAML parse, `git diff --check`, untracked whitespace scan clean; secret-pattern count scan 0; `.env` ignored + untracked (metadata only). No API calls, uploads, credentials, credits, deps, staging, or commits. **Live SAM: NO-GO.**
+
+## 2026-10-28 — Phase 4C.2: safety-gate hardening follow-up
+
+- What changed: in-process loss/rollback tripwire (deleted/replaced state rejected while the process lives; explicit reset recovers missing state with history re-seeded, budget not recovered); realpath state-dir normalization; stale-lock/orphan-temp fail-closed behavior pinned by tests; forged-reply validation (type, `fake-<n>` ID, string payload, flag) with in-process limits documented; provenance-forgery negatives; cross-process contention test (exactly 5 across 3 processes). One self-found reset/authorize ordering defect fixed; one editing accident (dropped test def) repaired and re-verified. JSONL unchanged, zero executed records. Recorded in `docs/muse-code-log/phase-4c-2-safety-gate-hardening.md`.
+- Checks: guard/transport file **43 passed** (1 first-run failure investigated: snapshot-restore hits history-rollback before the token check — restructured test to assert each layer); full suite **366 passed, 0 failed**; bytecode/cache-disabled pytest, no-write compile pass, TOML/YAML parse, JSONL validation, `git diff --check`, untracked whitespace scan clean; secret-pattern count scan 0; `.env` ignored + untracked (metadata only). No API calls, uploads, credentials, credits, deps, staging, or commits. Tested vs reasoned-about limits recorded in the session log. **Live SAM: NO-GO.**
+
+## 2026-10-28 — Phase 4C.3: two defect fixes + narrowed claims
+
+- What changed: `MockScanResult` now requires a `SamFrame` instance (`frame=None` etc. rejected); `_write()` cleanup guarded so mkdir failure surfaces `LiveGuardError`, not `UnboundLocalError`; docstrings narrowed (shape checks/marker are conventional, forgeable markers — not authenticity proof) with a boundary test proving a shape-valid forgery parses. Recorded in `docs/muse-code-log/phase-4c-3-defect-fixes.md`.
+- Checks: focused file **46 passed**; full suite **369 passed, 0 failed**; in-memory compile (48 files), TOML/YAML parse, JSONL validation (0 executed records), `git diff --check`, untracked whitespace scan clean; secret-pattern count scan 0; `.env` metadata-only (ignored/untracked, never read). No API calls, uploads, credentials, installs, staging, commits, or pushes. Strictly offline. Same-process forgery, cross-restart rollback, and billing remain UNVERIFIED/unenforced. **Live SAM remains NO-GO.**
+
+## 2026-10-28 — Phase 4D.1: offline integration contract review
+
+- What changed: created `docs/verification/phase-4d-integration-contract.md` (implementation-vs-boundary, 20-row evidence table with VERIFIED IN REPO / OFFICIAL SOURCE RECORDED / PROJECT-LOCAL ASSUMPTION / UNVERIFIED / BLOCKED labels, 8 unanswered contract questions, privacy/cost blockers, no-go checklist; authorizes nothing) from repository evidence only, no network. No additional contract test: every offline-testable invariant is already pinned by the suite; inventing schema is forbidden. Recorded in `docs/muse-code-log/phase-4d-1-integration-contract.md`.
+- Checks: focused SAM files **192 passed** (75 + 71 + 46); full suite **369 passed, 0 failed**; in-memory compile (48 files), TOML/YAML parse, JSONL validation (0 executed records), `git diff --check`, untracked whitespace scan clean; secret-pattern count scan 0; `.env` metadata-only (ignored/untracked, never read). No network/API calls, uploads, credentials, installs, staging, commits, or pushes. Blockers stand. **Live SAM remains NO-GO.**
+
+## 2026-10-28 — Phase 4D.1 corrections (Codex 4D.2 audit)
+
+- What changed (docs only, no code/tests): reconciled the contract confidence row with the matrix Phase 4B grammar bullet (0..1 range = recorded citation, not fresh verification; synthetic score stays project-local); documented the zero-area box parser difference (`response_text.py` accepts, `output.py` rejects; official semantics UNVERIFIED); narrowed retry scope (zero retries for any future authorized smoke test, B11 ≤2 policy stands project-level, provider semantics UNVERIFIED, authorizes nothing). Recorded in `docs/muse-code-log/phase-4d-1-integration-contract.md`.
+- Checks: `git diff --check` clean; untracked whitespace scan clean; read-back of all three edited documents confirmed; secret-pattern count scan 0 (counts only); `.env` metadata-only (ignored/untracked, never read). Full suite not re-run: documentation-only change, audit already reported 369 passing, no code or tests touched. No network/API calls, uploads, credentials, installs, staging, commits, or pushes. **Live SAM remains NO-GO.**
+
+## 2026-10-28 — Phase 4D.3: privacy/eligibility/cost readiness review
+
+- What changed: created `docs/verification/phase-4d-readiness-review.md` (17-row evidence table, blockers, owner decisions, go/no-go checklist at 0 of 10) from repository evidence only, no network. Nothing resolved: privacy notice still draft/unapproved; credits, billing, ZDR, consent flow, media limits, decoder, and live compatibility all remain UNVERIFIED/BLOCKED. Recorded in `docs/muse-code-log/phase-4d-3-readiness-review.md`.
+- Checks: `git diff --check` clean; untracked whitespace scan clean; read-back confirmed; secret-pattern count scan 0 (counts only); `.env` metadata-only (ignored/untracked, never read). Full suite not re-run (docs-only; 369 passing per audit). No network/API calls, uploads, credentials, installs, staging, commits, or pushes. **Live SAM remains NO-GO.**
+
+## 2026-10-28 — Phase 4D.3 audit corrections (Codex 4D.2 follow-up)
+
+- What changed (docs only, 3 files): review row 3 no longer claims credential absence (UNVERIFIED, nothing inspected); row 9 limited to reviewed documents; conclusion separates recorded-but-not-freshly-verified official claims from UNVERIFIED/BLOCKED account conditions; threat-model approval removed as a mandatory gate (unsupported by §10/§E; notice gate kept); "0 of 10" preserved for still-blocked §E/§10 rows. Recorded in `docs/muse-code-log/phase-4d-3-readiness-review.md`.
+- Checks: `git diff --check` clean; untracked whitespace scan clean; read-back of all three documents confirmed; secret-pattern count scan 0 (counts only); `.env` metadata-only (ignored/untracked, never read). Full suite not re-run (docs-only change, no code/tests touched). No network/API calls, uploads, credentials, installs, staging, commits, or pushes. **Live SAM remains NO-GO.**
+
+## 2026-10-28 — Offline SAM mask-to-severity subtask (limited T08)
+
+- What changed: added pure `mask_severity_pct(leaf, lesion)` in `src/mydrak/sam/severity.py` (reuses `intersection()`; `SegmentationEvalError` on type/shape mismatch; unrounded percent, `None` on empty leaf, `0.0` on zero overlap, outside-leaf lesion ignored) with 5 tests in `tests/test_severity.py` (4×4: 10 leaf / 3 overlap / 1 outside → `30.0`) and 1 grid-converter integration test in `tests/test_sam_grid.py` (→ `50.0`). All fixtures synthetic; grid-based project-local math only. Recorded in `docs/muse-code-log/phase-2-task-10-grid-adapter.md` (follow-up section).
+- Checks: grid + severity files pass; full suite passes; `compileall`, TOML/YAML parse, `git diff --check` clean; secret-pattern count scan 0; `.env` ignored + untracked (metadata only). No API calls, uploads, credentials, installs, staging, commits, or pushes.
+- Status (explicit): Phase 4 is **NOT FULLY CLOSED** and this task does not close it; T08's client and overlay scope remains incomplete; live SAM remains **NO-GO** (no live test authorized); no API credits were intentionally used.
+
+## 2026-10-28 — Offline SAM client/configuration boundary
+
+- What changed: added `src/mydrak/sam/client.py` (explicit validated config with no defaults, per-call credential resolution from injected env mapping or process env, credential-free metadata envelope, injected session protocol, validate → resolve → invoke-once dispatch, no retries, no network, no provider JSON invented) with `tests/test_sam_client.py` (36 tests: valid/mapping/placeholder/invalid config, zero calls on failure, credential exclusion, metadata-only receipt, no-network scan, default-still-fake). `config/models.yaml` untouched; model-ID discrepancy unresolved; `.env` autoload not claimed. Recorded in `docs/muse-code-log/sam-client-boundary.md`.
+- Checks: new file **36 passed** first run; full suite **411 passed, 0 failed** (375 + 36); `compileall`, TOML/YAML parse, `git diff --check`, untracked whitespace scan clean; secret-pattern count scan 0; `.env` ignored + untracked (metadata only). No API calls, uploads, credentials, installs, staging, commits, or pushes. Provider JSON, media limits, retry semantics, and billing remain UNVERIFIED/BLOCKED. Live execution disabled and unauthorized.
+
+## 2026-10-28 — Offline SAM request serialization
+
+- What changed: pure deterministic serializer in `src/mydrak/sam/client.py` (exact `model`/`input`/message/`input_text`+`input_image`/`stream:false` body per supplied findings; URL + base64-data-URL validation, no invented media limits; canonical `https://api.meta.ai/v1` + `/responses` built once, others rejected; key in `Authorization` header metadata only; raw reply returned unparsed) with 28 new tests in `tests/test_sam_client.py` (exact structure, malformed inputs, determinism, credential exclusion, exact dispatch metadata, pre-session failure). `run_scan`, default fake, and `models.yaml` untouched. Recorded in `docs/muse-code-log/sam-request-serialization.md`.
+- Checks: client file **64 passed** (36 carried + 28 new; 4 first-run failures fixed: 3 test-side kwargs, 1 docstring tripping the token scan); full suite **439 passed, 0 failed**; `compileall`, TOML/YAML parse, `git diff --check`, untracked whitespace scan clean; secret-pattern count scan 0; `.env` ignored + untracked (metadata only). No API calls, uploads, credentials, installs, staging, commits, or pushes. SAM media limits, envelope parsing, retry semantics, billing UNVERIFIED/BLOCKED; Phase 4 open. Live execution disabled and unauthorized.
+
+## 2026-10-29 — SAM request/dispatch hardening (Codex audit follow-up)
+
+- What changed: hardened `src/mydrak/sam/client.py` (stdlib `re` only, no `urllib` per the no-network token scan): full-body revalidation at construction and dispatch (unexpected keys/malformed nesting rejected, model/endpoint/timeout consistency enforced pre-session); nested-mutation bypass closed (session receives a deep copy); injected-session exceptions sanitized to fixed `SAM session call failed` (`from None`); strict HTTP(S) URL syntax (host/port/userinfo, no reachability claim); data-URL mediatype restricted to `image/*` with no invented SAM format limits; docstring distinguishes documented `sam-3.1` from UNVERIFIED eligibility/billing/live-compat. `run_scan`, default fake, `models.yaml`, `architecture.md` untouched. Recorded in `docs/muse-code-log/sam-request-hardening.md`.
+- Checks: client file **104 passed** (64 carried + 40 new; one first-run failure was this task's own `urllib` import tripping the token scan, fixed by hand-rolled parsing); full suite **479 passed, 0 failed**; `compileall`, TOML/YAML/JSONL parse, `git diff --check` clean; secret-pattern scan benign-only; `.env` ignored + untracked (metadata only, never read). No API calls, uploads, credentials, installs, staging, commits, or pushes. Envelope parsing, retry semantics, media limits, eligibility, billing UNVERIFIED/BLOCKED; Phase 4 open. Live execution disabled and unauthorized.
+
+## 2026-10-29 — SAM dispatch hardening, round 2 (Codex audit follow-up)
+
+- What changed: `src/mydrak/sam/client.py` (stdlib only): every injected-session failure — including `SamConfigError` — sanitized to fixed `SAM session call failed` (`from None`); construction sha256 snapshot rejects any post-construction body mutation at dispatch while `body` stays a plain readable dict; strict base64 length/padding rules; bracketed hosts validated via `ipaddress.IPv6Address` (no network/reachability claim); message `type` omitted or `"message"` accepted, others rejected. Matrix line 44 corrected (offline boundary recorded; `sam-3.1` vs eligibility/billing/compat distinguished; URL checks syntax-only). `run_scan`, default fake, `models.yaml`, `architecture.md` untouched. Recorded in `docs/muse-code-log/sam-request-hardening-2.md`.
+- Checks: client file **135 passed** (104 carried + 31 new, first run green); full suite **510 passed, 0 failed** (bytecode/cache disabled); in-memory compile of 50 files OK; TOML/3×YAML/JSONL parse OK (0 executed records); `git diff --check` clean; secret scan benign-only (value-safe literal check, 0 real secrets); `.env` ignored + untracked (metadata only, never read); no-network token scan 0. No API calls, uploads, credentials, installs, staging, commits, or pushes. Envelope parsing, retry semantics, media limits, eligibility, billing UNVERIFIED/BLOCKED; Phase 4 open. Live execution disabled and unauthorized.
+
+## 2026-10-29 — SAM dispatch hardening, round 3 (Codex audit follow-up)
+
+- What changed: `src/mydrak/sam/client.py` (stdlib only): sanitized dispatch error now raised outside the handler via flag, severing `__context__` and `__cause__`; digest-based mutation detection preserved (no immutability claimed, read compat kept, nested-mutation rejection tested); `sam-3.1` enforced at the HTTP boundary (`serialize_sam_body` + `dispatch_http`, incl. rejecting `sam-3-1`) while the generic config layer stays model-agnostic by design; matrix lines 30/44 and readiness row 39 corrected (offline format gate only, no live use/eligibility/billing/compat). `run_scan`, default fake, `models.yaml`, `architecture.md`, round-2 log untouched. Recorded in `docs/muse-code-log/sam-request-hardening-3.md`.
+- Checks: client file **144 passed** (135 carried + 9 new, first run green); full suite **519 passed, 0 failed** (bytecode/cache disabled); in-memory compile of 50 files OK; TOML/3×YAML/JSONL parse OK (0 executed records); `git diff --check` clean; secret scan benign-only (0 real secrets); `.env` ignored + untracked (metadata only, never opened); no-network token scan 0. No API calls, uploads, credentials, installs, staging, commits, or pushes. Envelope parsing, retry semantics, media limits, eligibility, billing UNVERIFIED/BLOCKED; Phase 4 open. Live execution disabled and unauthorized.
+
+## 2026-10-29 — SAM model-ID documentation consistency (Codex audit follow-up, docs-only)
+
+- What changed (3 sentences, 2 files): matrix line 44 states `sam-3.1` as the documented API model ID enforced by the SAM-specific request boundary, with UNVERIFIED extended to eligibility, billing/credits, media limits, response compatibility, retention/ZDR, live compat; matrix line 50 restates the discrepancy as UNVERIFIED live API-side resolution; readiness line 175 notes offline enforcement as format-gate-only. Inspected and left unchanged: `client.py` docstring, readiness row 39, round-2 log (historical), all readiness gates and NO-GO conclusions. Recorded in `docs/muse-code-log/sam-model-id-docs.md`.
+- Checks: focused client file **144 passed**; full suite **519 passed, 0 failed** (bytecode/cache disabled); `git diff --check` clean; read-back of edits confirmed; secret-pattern counts benign; `.env` ignored + untracked (metadata only, never opened). No code/test/config changes; no API calls, uploads, credentials, installs, staging, commits, or pushes. Phase 4 open. Live execution disabled and unauthorized.
+
+## 2026-10-29 — Offline SAM response-envelope parsing (Phase 4 product task)
+
+- What changed: new `src/mydrak/sam/envelope.py` (stdlib only) with conservative `parse_response_envelope` (two explicitly labeled shapes, UNVERIFIED envelope schema; fixed value-free errors; empty/missing/error replies fail closed; texts returned unparsed, separate from the synthetic fixture grammar) plus `tests/test_sam_envelope.py` (17 tests, synthetic fixtures labeled UNVERIFIED). No changes to client, transport, existing parsers, `models.yaml`, gates, or historical logs. Recorded in `docs/muse-code-log/sam-envelope-parsing.md`.
+- Checks: envelope + output + response-text + client files **307 passed** (17 new, first-run token-assertion fix as logged); in-memory compile of new files OK; `git diff --check` clean. Full suite deferred to next phase boundary (no shared file modified, nothing existing imports the new module). No API calls, uploads, credentials, installs, staging, commits, or pushes. Envelope schema, live compat, eligibility, billing UNVERIFIED. Phase 4 open. Live SAM remains NO-GO.
+
+## 2026-10-29 — Caller-side envelope-to-frames adapter (Phase 4 task 2/3)
+
+- What changed: new `src/mydrak/sam/frames.py` (`adapt_envelope` parses each envelope text against caller-supplied dimensions; `""` → zero-match frame, zero texts or rejected text → manual-review outcome with value-free detail, only non-envelope input raises) plus `tests/test_sam_frames.py` (11 tests, synthetic fixtures). Grid adapter untouched; no changes to envelope/parsers, client, transport, `models.yaml`, gates, or historical logs. Recorded in `docs/muse-code-log/sam-frames-adapter.md`.
+- Checks: frames + envelope + output + response-text files **173 passed** (11 new, first run green); in-memory compile of new files OK; `git diff --check` clean. Full suite deferred to next phase boundary (no shared file modified, nothing existing imports the new module). No API calls, uploads, credentials, installs, staging, commits, or pushes. Provider behavior UNVERIFIED. Phase 4 open. Live SAM remains NO-GO.
+
+## 2026-10-29 — Offline integration chain (Phase 4 final offline task)
+
+- What changed: new `src/mydrak/sam/chain.py` (`run_offline_chain`: envelope → frames → explicit decision; `no-findings` only for parsed zero-match, everything else `manual-review`, `severity_pct` always `None` offline since wire masks stay opaque) plus `tests/test_sam_chain.py` (11 tests, severity-never-fabricated asserted); readiness row 58 evidence note appended (label stays UNVERIFIED, gates intact). No changes to parsers, client, transport, `models.yaml`, `architecture.md`, or historical logs. Recorded in `docs/muse-code-log/sam-offline-chain.md`.
+- Checks: chain + affected SAM files **227 passed** (11 new; 2 first-run token-assertion fixes as logged); full suite **556 passed, 0 failed** (bytecode/cache disabled); in-memory compile OK; TOML/3×YAML/JSONL parse OK (0 executed records); `git diff --check` clean; secret scan 0 real secrets; `.env` ignored + untracked (metadata only, never opened). No API calls, uploads, credentials, installs, staging, commits, or pushes. No checks deferred. Phase 4 offline scope validated; live SAM remains NO-GO (mask decoding, eligibility, billing, retention, authorization BLOCKED).
+
+## 2026-10-29 — Offline English-first reply composer (T07 slice)
+
+- What changed: added `src/mydrak/reply/composer.py` and `templates.py` for deterministic English answer/ask/refer/retake rendering from supplied structured data and KB text; answer requires the fixed confidence vocabulary and safety line, optional severity is labeled as a one-photo estimate, ask selects a KB question, and missing/unavailable content fails closed. Added `tests/test_reply_composer.py` with synthetic-only disease-card fixtures plus actual safety-card referral/retake checks. Recorded in `docs/muse-code-log/offline-reply-composer.md`.
+- Checks: focused reply/KB tests **30 passed**; full suite **583 passed, 0 failed**; both pytest runs disabled bytecode/cache generation. No network, API, credentials, uploads, or credits.
+- What remains: T07 is partial. No native-reviewed Hindi templates, disease cards, Telegram delivery, or diagnosis logic were added; Hindi output remains unavailable. Synthetic fixtures establish rendering only, not diagnosis or agronomic accuracy.
+
+## 2026-10-29 — Offline bounded follow-up loop (T16 slice)
+
+- What changed: added `src/mydrak/workflow/followup.py` to reuse the reply composer and KB question/referral text for a bounded follow-up conversation. It requires one answer before another ask, stops after two questions, then refers; answer contents are not retained. Added `tests/test_followup.py` with synthetic card text, terminal/refusal/error cases, and the repository safety-card referral. Recorded in `docs/muse-code-log/offline-bounded-followup.md`.
+- Focused tests: `tests/test_followup.py`, `tests/test_reply_composer.py`, and `tests/test_kb_loader.py` — **45 passed**.
+- Full suite: **599 passed, 0 failed** with bytecode/cache generation disabled.
+- What remains: this is not a Telegram handler and does not interpret answers or choose questions; a future caller must select the next question from approved KB/model evidence. It makes no diagnosis and performs no external processing.
+
+## 2026-10-29 — Offline workflow coordinator
+
+- What changed: added `src/mydrak/workflow/coordinator.py` to reuse `process_intake`'s data-policy gate, the offline SAM chain, referral composition, and bounded follow-up state. Policy denial stops parsing. Only explicitly labeled synthetic SAM fixtures are accepted; the intake MOCK finding is discarded; zero detections refer without implying plant health, and other outcomes require manual review/referral with no severity. Added `tests/test_workflow_coordinator.py` for normal, blocked, malformed, unsupported-language, and follow-up paths. Recorded in `docs/muse-code-log/offline-workflow-coordinator.md`.
+- Focused cross-module suite: `tests/test_workflow_coordinator.py tests/test_followup.py tests/test_reply_composer.py tests/test_mock_intake.py tests/test_sam_chain.py` — **101 passed**.
+- Full suite: **606 passed, 0 failed** with bytecode/cache generation disabled.
+- What remains: no diagnosis source selects the next KB question; the caller must select it from approved evidence. Telegram delivery, disease-card coverage, and live SAM remain separate and incomplete.
+
+## 2026-10-29 — T06 fail-closed disease-card schema validation
+
+- What changed: added an additive disease-card validator and YAML loader in `src/mydrak/kb/loader.py`, preserving the existing general safety-card path. Added synthetic-only structure tests in `tests/test_disease_card_schema.py`; no disease content or treatment advice was authored. Recorded details in `docs/muse-code-log/t06-disease-card-schema-validation.md`.
+- Checks: focused KB tests **35 passed**; full suite **639 passed, 0 failed** (`PYTHONDONTWRITEBYTECODE=1`, pytest cache disabled); `git diff --check` clean. No API calls, uploads, credentials, dependencies, or Git mutations.
+- What remains: B6 content sourcing, card authoring/review, native Hindi review, and chemical citation/safety verification are not established by schema validation. Live SAM remains NO-GO.
+
+## 2026-10-29 — T03 offline-first Telegram adapter and state flow
+
+- What changed: added a normalized synthetic-update boundary in `src/mydrak/bot/adapter.py` with B7 conversation states, `/start`, `/language`, `/help`, `/rescan`, photo/voice handling, policy-gated photo deferral, and trusted-only workflow state transitions. Default delivery is disabled; the only supported transport is an in-memory fake. Added `tests/test_bot_adapter.py`. No Telegram SDK, wire-format assumption, media bytes, or live integration.
+- Checks: focused adapter/intake/coordinator/follow-up tests **85 passed**; full suite **660 passed, 0 failed** (`PYTHONDONTWRITEBYTECODE=1`, pytest cache disabled); syntax/config and `git diff --check` clean.
+- What remains: photo preprocessing and diagnosis (T04/T05), voice transcription (T10), scan history for `/rescan` (T09), disease-driven follow-up selection/interpretation, Hindi replies, and live Telegram delivery are unavailable. Live SAM remains NO-GO.
+
+## 2026-10-29 — T04 image preprocessing assessment (blocked)
+
+- What changed: no code changed. Existing `read_local_image()` performs bounded PNG/JPEG header inspection only; it does not decode pixels, apply EXIF orientation, resize/recompress, or measure image quality. T04 preprocessing is blocked pending approval for an image-decoding dependency and decisions on unspecified numeric thresholds/resize settings. Recorded in `docs/muse-code-log/t04-preprocessing-blocker.md`.
+- Existing checks: focused image/workflow/T03 tests **66 passed**; full suite **660 passed, 0 failed** (bytecode/cache disabled). These verify existing behavior, not T04 completion.
+- What remains: no new dependency was installed or added, and no thresholds were invented. Live SAM remains NO-GO.
+
+## 2026-10-29 — T11 offline signal extraction and Decider integration
+
+- What changed: added `src/mydrak/decider/extraction.py` with B3 S1 extraction from two structured samples, numeric S4 extraction, explicit unavailable S2/S3 cases, and safe referral when signal evidence is incomplete or invalid. Hardened `combine()` and `decide()` for finite/ranged values, valid weights, and consistent escalation/follow-up state. Added synthetic-only `tests/test_decider_extraction.py`. No workflow coordinator integration because it has no model samples, KB-overlap result, T04 quality metrics, or model confidence input.
+- Checks: focused Decider tests **79 passed**; full suite **726 passed, 0 failed** (`PYTHONDONTWRITEBYTECODE=1`, pytest cache disabled); syntax/config parsing and `git diff --check` clean.
+- What remains: S2 symptom overlap/tokenization, S3 image-quality measurements, S4 band mapping, model-output validation (T05), and calibrated production thresholds remain unresolved. Synthetic tests do not establish model accuracy or agronomic safety. Live SAM remains NO-GO.
+
+## 2026-10-29 — T05 offline diagnosis output contract
+
+- What changed: added `src/mydrak/vision/diagnosis.py` with strict B8 eight-field JSON validation, trusted crop/disease allowlists, duplicate-key and extra-field rejection, separate valid/unknown/unavailable results, an injected provider protocol, and exactly one repair attempt for invalid structured output. Numeric confidence aligns with T11 S4; no provider/model or workflow route is created. Added synthetic-only `tests/test_diagnosis_contract.py`.
+- Checks: focused diagnosis/Decider tests **121 passed**; full suite **768 passed, 0 failed** (`PYTHONDONTWRITEBYTECODE=1`, pytest cache disabled); syntax/config parsing and `git diff --check` clean.
+- What remains: complete confidence-band vocabulary, curated T06 allowlists, request/prompt contract, T04 image input, T12 sampling/escalation, and live provider compatibility remain unresolved. B11 API-error backoff is not implemented in this offline validator; no live provider exists. Live SAM remains NO-GO.
+
+## 2026-10-29 — T06 KB matching readiness follow-up
+
+- What changed: no matcher or disease content added. Reviewed B6/T06 against the KB files, T05 allowlist inputs, and T11 S2 extraction. The only repository card is general safety; disease cards and trusted crop/ID vocabularies are absent. Existing no-card S2=0 behavior remains; matching-card symptom overlap remains unavailable until its contract is defined. Recorded the content and policy decisions needed in `docs/muse-code-log/t06-kb-matching-readiness.md`.
+- Checks: read-only source/config inspection and `git diff --check`; no tests rerun because code and tests were unchanged.
+- What remains: choose the three crops from the farmer region, curate/review 12–16 source-backed cards and bilingual content, derive trusted T05 allowlists, and approve the symptom-overlap/tokenization rule before implementing a matcher. Live SAM remains NO-GO.
+
+## 2026-10-29 — T12 offline Glimmer sampling and escalation contract
+
+- What changed: added `src/mydrak/vision/sampling.py` and synthetic-only tests for two B8-validated Glimmer samples, B3 S1 agreement, one Spark invocation on valid disagreement, and caller-carried per-case escalation state. Existing B8 validation/one-repair behavior and T11 S1 extraction are reused. Recorded in `docs/muse-code-log/t12-glimmer-sampling-escalation.md`.
+- What remains unverified/incomplete: no provider or request format, SAM crop input, score-driven B3 escalation, re-score, or final policy decision was introduced. S2/S3 and production thresholds remain unavailable/placeholders; state is transient and caller-carried. No provider compatibility is claimed.
+- Verification: focused T12/B8/B3 tests **124 passed**; full suite **784 passed, 0 failed** with bytecode and pytest cache disabled; compileall and TOML/YAML parsing passed; safe secret-pattern scan found 0 matches; `.env` ignored/untracked confirmed via Git metadata; `git diff --check` and new-file whitespace scan clean.
+- Live SAM remains NO-GO; no live call is authorized or performed.
+
+## 2026-10-29 — T13 evaluation harness readiness (blocked)
+
+- What changed: no code or tests changed. Compared C2 T13 and D1/D2/D8 requirements with the existing header-only image report, evaluation data inventory, diagnosis/Decider/sampling interfaces, model configuration, and trace availability. Recorded the evidence blocker in `docs/muse-code-log/t13-evaluation-harness-readiness.md`.
+- What blocks implementation: no 30 labeled licensed images or dev/test split, no per-strategy prediction/route outcomes, no token/cost/latency traces, model IDs/prices remain placeholders, and D1's deferral/coverage denominator needs clarification. Generating metrics or charts now would require invented inputs or unsupported figures.
+- Checks: existing header-report tests **6 passed**; full suite **784 passed, 0 failed**; compileall and TOML/YAML parsing passed; secret-pattern scan found 0 matches; `.env` ignored/untracked confirmed through Git metadata; `git diff --check` and new-log whitespace check clean. No metrics were generated.
+- No APIs, network, uploads, credentials, credits, dependency installs, or Git history operations. Live SAM remains NO-GO.
+
+## 2026-10-29 — T04 image preprocessing follow-up (blocked)
+
+- What changed: no code or tests changed. Rechecked T04 B1/B3/C2 against the bounded PNG/JPEG header reader, its synthetic tests, `config/thresholds.yaml`, and declared dependencies. Recorded the current blocker and required decisions in `docs/muse-code-log/t04-image-preprocessing.md`; preserved the prior T04 blocker log.
+- What blocks implementation: no approved image decoder dependency is installed or declared, and B1/B3/C2 do not define resize/encoding parameters, blur/brightness/leaf-coverage thresholds, or measurement-to-S3 mapping. `quality_min: 0.4` remains a placeholder; local intake bounds are not quality thresholds.
+- Verification: existing image-header/workflow/adapter tests **66 passed**; full suite **784 passed, 0 failed**; compileall and TOML/YAML parsing passed; safe secret-pattern scan found 0 matches; `.env` ignored/untracked confirmed via Git metadata; `git diff --check` and new-log whitespace scan clean. These checks do not establish pixel decoding or quality-gate behavior.
+- No live services, media uploads, credentials, credits, dependency installs, or Git history operations. Live SAM remains NO-GO.
+
+## 2026-10-29 — T06 disease-card content planning and readiness
+
+- What changed: no disease cards, code, or tests added. Created `docs/verification/t06-disease-card-content-plan.md` with B6 fields/content rules, source/review traceability plan, allowlist derivation, S2 blocker, and owner decisions. Recorded in `docs/muse-code-log/t06-disease-card-content-planning.md`.
+- What blocks content/matching: no intended farmer region or approved crop selection; no sourced/reviewed disease content or production cards; no authoritative-source hierarchy/reviewers recorded; and B3 S2 normalization, overlap denominator, bilingual tokenization, and score handling remain unspecified.
+- Checks: existing KB schema tests and full suite, compile/config, secret-pattern, `.env` metadata, and whitespace/diff checks are reported in this task completion response. Synthetic schema fixtures remain test-only and are not agricultural evidence.
+- No live services, network, media uploads, credentials, credits, dependency installs, or Git history operations. Live SAM remains NO-GO.
+
+## 2026-10-29 — T09 offline trace and cost-accounting slice
+
+- What changed: added `src/mydrak/trace/store.py` with an atomic SQLite `cases`/`steps` writer, bounded trace validation, latency totals, and per-million-token cost estimation. Missing or `TODO(verify)` prices yield unknown (`NULL`) cost. Integrated sanitized persistence for accepted offline coordinator outcomes, including policy blocks; records contain only fixed stage labels/outcomes and no image bytes, user text, synthetic SAM text, or mock findings. Added synthetic offline tests and created `docs/verification/roadmap_reconciliation.md` for all 19 C2 tasks.
+- Status: T09 is **PARTIAL**, not complete: provider token/price traces, remaining B9 tables, and whole-application coverage do not exist. Live SAM remains **NO-GO**. No code or documentation asserts live compatibility or real costs.
+- Checks: focused trace/coordinator tests **18 passed**; full suite **795 passed**; `compileall`, TOML/YAML/JSONL parsing, `git diff --check`, and scoped whitespace check passed; secret-pattern scan found 0 matches; `.env` ignore/untracked state confirmed by Git metadata only. Details in `docs/muse-code-log/t09-trace-cost-accounting.md`.
+- What is next: implement B5/T17 recovery-history persistence with its specified hashed user ID, plant label, timestamp, severity, and image hash, reusing the existing trend helper. Use synthetic records and define retention before deployment; no live integration or live test is authorized.
+
+## 2026-10-29 — T17 recovery-history persistence
+
+- What changed: extended the existing T09 SQLite store with B9 `scans` persistence and added `src/mydrak/recovery/history.py`. Records require a 64-character lowercase SHA-256 user hash and image hash, a timezone-qualified timestamp, exact farmer-selected plant label, finite 0–100 severity, and a linked T09 case for the same hash. Re-scans match exact `(user_hash, plant_label)`, require a strictly later timestamp, compute percentage-point delta, and reuse `recovery_trend` with B5's 3pp default and caller-configurable margin. No image bytes or raw user IDs are accepted or stored.
+- Status: offline recovery-history persistence and comparison are implemented. T17 remains **PARTIAL**: current workflow does not produce validated real scan severity or deliver a localized B5 caveat; scan-record retention is not specified and must be resolved before deployment. No improvement is attributed to treatment.
+- Checks: focused recovery/T09/coordinator tests **48 passed**; full suite **825 passed**; compileall, TOML/YAML/JSONL parsing, `git diff --check`, scoped whitespace, safe secret scan, and `.env` metadata checks passed. Exact commands are in `docs/muse-code-log/t17-recovery-history-persistence.md`.
+- No network/API calls, uploads, credentials, credits, dependency installs, or Git history operations. Live SAM remains **NO-GO**.
+
+## 2026-10-29 — T15 offline replay and trace backup
+
+- What changed: added `src/mydrak/replay/replay.py`, which re-runs only an explicitly labeled in-memory synthetic fixture through the existing offline coordinator, and `TraceStore.backup_to()` for non-overwriting local SQLite backups. Tests block socket creation, check replay outcomes and privacy-safe tracing, verify backup contents, and ensure existing destinations are preserved.
+- Status: T15 is **PARTIAL**. B10's `DEMO_MODE=replay` serving of cached responses is not implemented; this slice does not cache arbitrary response text or claim live replay behavior.
+- Verification: focused replay/T09/coordinator tests **28 passed**; full suite **834 passed**; compileall, TOML/YAML/JSONL parsing, `git diff --check`, scoped whitespace and secret scans passed; `.env` metadata checks confirmed ignored/untracked without reading contents. Exact commands are in `docs/muse-code-log/t15-offline-replay-and-backup.md`.
+- No live calls, network access, uploads, credentials, credit use, dependency installs, or Git history operations. Live SAM remains **NO-GO**.
+
+## 2026-10-29 — T15 validated offline cached replay
+
+- What changed: extended the existing SQLite store with the B9 `cache(key,response_json,ts)` table and a strict cache payload allowlist; added validated `DEMO_MODE` loading and cached replay helpers. Replay accepts only a trace-backed synthetic offline outcome, stores only fixed schema/provenance/status/response-code fields, and renders fixed English demo text. Cache keys are SHA-256 digests of bounded project fixture IDs. Duplicate keys do not overwrite, corrupt/missing rows fail closed, and there is no provider/network fallback. SQLite backups include cache rows. Recorded details in `docs/muse-code-log/t15-cached-replay-mode.md`.
+- Scope/status: T15 remains **PARTIAL**. This supports three explicitly synthetic response outcomes only; it is not connected to Telegram/app lookup, has no full approved demo-case inventory, and does not enable `DEMO_MODE=live`. No provider outputs or real diagnoses are cached.
+- Verification: focused replay/trace tests **55 passed**; full suite **870 passed, 0 failed**; `python3 -m compileall -q src tests eval` passed; `pyproject.toml`, all three config YAML files, and JSONL test-log records parsed (2 records; 0 executed); `git diff --check` passed; scoped whitespace scan found 0 trailing-whitespace lines; safe secret-pattern scan found 0 matches; `.env` ignore/untracked state confirmed with Git metadata only.
+- No APIs, network requests, uploads, credentials, credits, dependency installs, or Git history operations. Live SAM remains **NO-GO**.
+
+## 2026-10-29 — T15 replay caller integration
+
+- What changed: connected the normalized offline Telegram adapter command `/replay synthetic-referral-01` to the existing validated cache path. The adapter only accepts a registered fixture ID, serves the fixed cached synthetic response, leaves conversation state unchanged, and records a privacy-safe `replay_cache_read` case/step in the existing trace store before returning it. Missing, invalid, unknown, or live-mode requests fail closed; delivery remains disabled by default. Recorded in `docs/muse-code-log/t15-replay-caller-integration.md`.
+- Scope/status: T15 remains **PARTIAL**. Only the already-supported synthetic referral fixture is registered; the full D3 inventory is not defined/available, and there is no real Telegram wire adapter or image-hash lookup. Live/provider replay remains disabled.
+- Verification: focused bot/replay/trace tests **84 passed**; full suite **878 passed, 0 failed**; `python3 -m compileall -q src tests eval` passed; TOML, three YAML files, and JSONL parsed (2 records; 0 executed); `git diff --check` passed; safe secret scan found 0 matches; scoped whitespace scan found 0 issues; `.env` metadata confirms ignored/untracked.
+- No network/API calls, uploads, credentials, credits, dependency installs, or Git history operations. Live SAM remains **NO-GO**.
+
+## 2026-10-29 — T09/T11 B9 Decider signal tracing
+
+- What changed: added the specification-listed B9 `signals` table and strict insert/read APIs to the existing SQLite trace store. `route_signals()` can optionally persist its routed B3 signal values and decision against an existing trace case. Unavailable or malformed measurements are stored as `NULL`; signal reasons, source text, and user data are not stored. Tests cover normalized values, boundaries, nulls, invalid inputs, duplicate/missing cases, decision routing, and SQLite backup preservation. Recorded in `docs/muse-code-log/t09-b9-signal-persistence.md`.
+- Scope/status: T09 remains **PARTIAL** because `eval_runs`, per-step `started_at`, complete app event coverage, provider token traces, and verified prices are absent. T11 remains **PARTIAL** because T04 S3, matching-card S2, confidence-band mapping, and live diagnosis inputs are unavailable. The coordinator does not fabricate these values.
+- Verification: focused trace/Decider/replay tests **145 passed**; full suite **893 passed, 0 failed**; `python3 -m compileall -q src tests eval` passed; TOML, three YAML files, and JSONL parsed (2 records; 0 executed); `git diff --check` passed; safe secret scan found 0 matches; scoped whitespace scan found 0 issues; `.env` metadata confirms ignored/untracked.
+- No live APIs, network, uploads, credentials, dependency installs, credit use, or Git history operations. Live SAM remains **NO-GO**.
+
+## 2026-10-29 — T13 offline evaluation core
+
+- What changed: added a standard-library-only metrics module, hand-written SVG charts, and an offline CLI that joins labels CSV to recorded predictions JSON and emits test-split JSON/Markdown/SVG reports. Added clearly synthetic fixtures and focused regression tests. Updated `eval/README.md` and the roadmap matrix; T13 core is **PARTIAL**, while real licensed labels, actual strategy outcomes, verified costs/latencies, and frozen threshold evidence remain blocked. The ten existing `eval/data/dev` images were not opened or used.
+- Metric conventions: deferrals/retakes count incorrect in all-case accuracy; coverage means answered/all; escalation uses the explicit recorded flag; missing price/token data yields unknown cost. These are stated project-local conventions, not new master-spec definitions. Scores only produce descriptive curves; no threshold is selected or tuned on test data.
+- Verification: focused tests **23 passed** (`python3 -m pytest tests/test_eval_metrics.py tests/test_eval_chart.py -q`); full suite **916 passed** (`python3 -m pytest -q`); `python3 -m compileall -q src tests eval` and `git diff --check` passed. Additional secret-pattern, `.env` metadata, and untracked-whitespace results are in `docs/muse-code-log/t13-eval-core-codex.md`.
+- No network/API calls, credentials, media, credits, dependency installs, or Git history operations. Live SAM remains **NO-GO**.
