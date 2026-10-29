@@ -238,9 +238,19 @@ def test_mask_payload_limit_enforced():
     # valid; only the configured payload cap rejects it.
     text = doc(rec(mask_text=mask(payload="a" * 9)))
     assert parse(text).match_count == 1
+    assert parse(text, limits=SamLimits(max_mask_chars=9)).match_count == 1
     with pytest.raises(SamResponseError, match="malformed mask payload") as excinfo:
         parse(text, limits=SamLimits(max_mask_chars=8))
     assert "aaaaaaaaa" not in str(excinfo.value)
+
+
+def test_documented_payload_marker_characters_remain_opaque():
+    # The docs allow these printable characters in payload bytes. This checks
+    # preservation only; it does not validate a Base85 alphabet or decode it.
+    parsed = parse(doc(rec(mask_text=mask(enc="~", payload="!~"))))
+    found = parsed.objects[0].mask
+    assert found.encoding == "~"
+    assert found.payload == "!~"
 
 
 def test_errors_never_echo_payloads():

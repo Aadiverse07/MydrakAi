@@ -6,6 +6,7 @@ import pytest
 from mydrak.sam.adapter import GRID_ENCODING, grid_mask_to_binary
 from mydrak.sam.output import SamLimits, SamMask
 from mydrak.sam.scores import BinaryMask, SegmentationEvalError, dice, iou
+from mydrak.sam.severity import mask_severity_pct
 
 
 def grid(width, height, rows, encoding=GRID_ENCODING):
@@ -113,3 +114,12 @@ def test_errors_carry_no_values():
         grid_mask_to_binary(SamMask(width=2, height=1, encoding="secret-encoding-value", data="10"))
     except SegmentationEvalError as exc:
         assert "secret-encoding-value" not in str(exc)
+
+
+def test_grid_conversion_feeds_mask_severity():
+    # Synthetic `synthetic-grid-v1` masks flow through the existing
+    # converter into the project-local severity helper: 2 of 4 leaf
+    # cells overlap, so the result is exactly 50.0 (unrounded).
+    leaf = grid_mask_to_binary(grid(2, 2, ["11", "11"]))
+    lesion = grid_mask_to_binary(grid(2, 2, ["10", "10"]))
+    assert mask_severity_pct(leaf, lesion) == 50.0

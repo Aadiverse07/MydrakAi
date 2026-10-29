@@ -1,0 +1,11 @@
+[
+  {"case_id":"synthetic-case-01","strategy":"always_spark","predicted":"crop_a_condition_a","action":"answer","escalated":true,"tokens_in":10,"tokens_out":4,"latency_ms":100,"price_in_per_1m":1.0,"price_out_per_1m":2.0,"score":0.9},
+  {"case_id":"synthetic-case-02","strategy":"always_spark","predicted":"crop_b_condition_b","action":"answer","escalated":true,"tokens_in":10,"tokens_out":4,"latency_ms":120,"price_in_per_1m":1.0,"price_out_per_1m":2.0,"score":0.8},
+  {"case_id":"synthetic-case-03","strategy":"always_spark","predicted":null,"action":"refer","escalated":true,"tokens_in":10,"tokens_out":4,"latency_ms":140,"price_in_per_1m":1.0,"price_out_per_1m":2.0,"score":0.2},
+  {"case_id":"synthetic-case-01","strategy":"always_glimmer","predicted":"crop_a_condition_a","action":"answer","escalated":false,"tokens_in":null,"tokens_out":null,"latency_ms":80,"price_in_per_1m":null,"price_out_per_1m":null,"score":0.9},
+  {"case_id":"synthetic-case-02","strategy":"always_glimmer","predicted":"crop_b_condition_b","action":"answer","escalated":false,"tokens_in":null,"tokens_out":null,"latency_ms":90,"price_in_per_1m":null,"price_out_per_1m":null,"score":0.7},
+  {"case_id":"synthetic-case-03","strategy":"always_glimmer","predicted":null,"action":"ask","escalated":false,"tokens_in":null,"tokens_out":null,"latency_ms":110,"price_in_per_1m":null,"price_out_per_1m":null,"score":0.1},
+  {"case_id":"synthetic-case-01","strategy":"mydrak_router","predicted":"crop_a_condition_a","action":"answer","escalated":false,"tokens_in":5,"tokens_out":3,"latency_ms":50,"price_in_per_1m":0.5,"price_out_per_1m":1.0,"score":0.95},
+  {"case_id":"synthetic-case-02","strategy":"mydrak_router","predicted":null,"action":"retake","escalated":false,"tokens_in":5,"tokens_out":3,"latency_ms":70,"price_in_per_1m":0.5,"price_out_per_1m":1.0,"score":0.6},
+  {"case_id":"synthetic-case-03","strategy":"mydrak_router","predicted":null,"action":"refer","escalated":true,"tokens_in":5,"tokens_out":3,"latency_ms":90,"price_in_per_1m":0.5,"price_out_per_1m":1.0,"score":0.3}
+]

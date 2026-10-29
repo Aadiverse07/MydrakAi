@@ -1,1 +1,15 @@
-"""Recovery re-scan store and severity comparison (spec B5, should-have). Deferred past Phase 0."""
+"""Offline B5 recovery-history records and trend assessment."""
+
+from mydrak.recovery.history import (
+    RecoveryAssessment,
+    RecoveryHistoryError,
+    RecoveryScan,
+    record_recovery_scan,
+)
+
+__all__ = [
+    "RecoveryAssessment",
+    "RecoveryHistoryError",
+    "RecoveryScan",
+    "record_recovery_scan",
+]

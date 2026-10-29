@@ -4,6 +4,8 @@ Bands are heuristics, NOT validated agronomic thresholds. Callers must label
 the result an estimate from one photo. No SAM client in Phase 0.
 """
 
+from mydrak.sam.scores import BinaryMask, intersection
+
 
 def severity_pct(lesion_area: float, leaf_area: float) -> float | None:
     """Return percent of leaf affected, or None when there is no leaf mask."""
@@ -12,6 +14,23 @@ def severity_pct(lesion_area: float, leaf_area: float) -> float | None:
     if lesion_area < 0:
         raise ValueError(f"lesion_area must be >= 0, got {lesion_area!r}")
     return lesion_area / leaf_area * 100.0
+
+
+def mask_severity_pct(leaf: BinaryMask, lesion: BinaryMask) -> float | None:
+    """Return 100 * (lesion cells overlapping leaf) / (leaf cells).
+
+    Both masks must be BinaryMask values with identical dimensions;
+    anything else raises SegmentationEvalError. Returns None when the
+    leaf has no foreground cells (matching severity_pct), 0.0 when
+    nothing overlaps, and ignores lesion cells outside the leaf. The
+    result is unrounded. Grid-based and project-local: not agronomic
+    validation, provider output, or real-image accuracy.
+    """
+    overlap = intersection(lesion, leaf)
+    leaf_cells = leaf.foreground
+    if leaf_cells == 0:
+        return None
+    return overlap / leaf_cells * 100.0
 
 
 def band(pct: float, low_max: float = 10.0, moderate_max: float = 30.0) -> str:

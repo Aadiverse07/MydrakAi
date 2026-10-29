@@ -1,1 +1,1 @@
-"""Telegram handlers and conversation state machine (spec B7). Deferred past Phase 0."""
+"""Offline Telegram update adapter; no Telegram SDK or live transport."""

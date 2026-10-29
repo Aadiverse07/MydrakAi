@@ -1,0 +1,4 @@
+case_id,split,label,out_of_scope,provenance
+synthetic-case-01,dev,crop_a_condition_a,false,synthetic_fixture
+synthetic-case-02,test,crop_b_condition_b,false,synthetic_fixture
+synthetic-case-03,test,unknown,true,synthetic_fixture
