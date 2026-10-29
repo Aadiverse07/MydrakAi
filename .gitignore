@@ -33,6 +33,7 @@ build/
 *.db
 *.sqlite
 *.sqlite3
+*.sqlite*
 
 # Personal data: private farmer images, audio, video, or local uploads.
 farmer_images/
