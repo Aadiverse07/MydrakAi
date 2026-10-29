@@ -13,7 +13,7 @@ from numbers import Real
 from typing import Literal
 
 from mydrak.decider.policy import Action, decide
-from mydrak.decider.signals import combine
+from mydrak.decider.signals import combine, s2_symptom_overlap
 from mydrak.trace.store import TraceError, TraceStore
 
 
@@ -58,15 +58,21 @@ def extract_agreement(
 def extract_kb_match(
     predicted_label: object,
     cards: Sequence[Mapping[str, object]] | None,
+    observed_symptoms: Sequence[str] | None = None,
 ) -> SignalMeasurement:
-    """Extract only B3's unambiguous no-card S2 case.
-
-    For a matching card, B3 requires symptom keyword overlap but does not
-    define tokenization, normalization, or the overlap denominator. That case
-    remains unavailable rather than applying a guessed matcher.
-    """
+    """Extract B3 S2 using the project-local phrase-overlap contract."""
     if not isinstance(predicted_label, str) or not predicted_label.strip():
         return unavailable("predicted_label_unavailable")
+    if observed_symptoms is None:
+        return unavailable("observed_symptoms_unavailable")
+    try:
+        # Validate observations even when there is no matching card; empty
+        # observations are unavailable, not evidence of a zero match.
+        observed_count = s2_symptom_overlap(observed_symptoms, [])
+    except ValueError:
+        return unavailable("observed_symptoms_invalid")
+    if observed_count is None:
+        return unavailable("observed_symptoms_unavailable")
     if cards is None or isinstance(cards, (str, bytes)) or not isinstance(cards, Sequence):
         return unavailable("kb_cards_unavailable")
     card_ids: list[str] = []
@@ -82,7 +88,14 @@ def extract_kb_match(
     label = predicted_label.strip().casefold()
     if label not in card_ids:
         return SignalMeasurement(0.0)
-    return unavailable("symptom_overlap_contract_unresolved")
+    matching = next(card for card in cards if card["id"].strip().casefold() == label)
+    try:
+        value = s2_symptom_overlap(observed_symptoms, matching.get("symptoms"))
+    except ValueError:
+        return unavailable("kb_card_symptoms_invalid")
+    if value is None:
+        return unavailable("observed_symptoms_unavailable")
+    return SignalMeasurement(value)
 
 
 def extract_quality() -> SignalMeasurement:

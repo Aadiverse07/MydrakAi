@@ -14,11 +14,21 @@ import re
 from typing import Any, Literal
 import uuid
 
+from mydrak.decider.extraction import (
+    DecisionResult,
+    SignalSet,
+    extract_agreement,
+    extract_kb_match,
+    extract_quality,
+    route_signals,
+    unavailable,
+)
 from mydrak.intake.adapter import IntakeError, process_intake
 from mydrak.privacy.data_policy import DataClass, ProcessingEvidence
 from mydrak.reply.composer import ReplyError, compose_reply
 from mydrak.sam.chain import ChainOutcome, run_offline_chain
 from mydrak.trace.store import TraceCase, TraceStep, TraceStore
+from mydrak.vision.diagnosis import DiagnosisOutput, DiagnosisResult, DiagnosisStatus
 from mydrak.workflow.followup import (
     FollowUpError,
     FollowUpState,
@@ -243,3 +253,52 @@ def coordinate_followup_answer(
         )
     except FollowUpError:
         raise OfflineCoordinatorError("follow-up transition was rejected") from None
+
+
+def coordinate_mock_tier1_results(
+    first: DiagnosisResult,
+    second: DiagnosisResult,
+    *,
+    cards: Sequence[Mapping[str, object]],
+    weights: Mapping[str, float],
+    thresholds: Mapping[str, object],
+    escalated: bool = False,
+    followups_used: int = 0,
+) -> DecisionResult:
+    """Route two validated synthetic Tier-1 results through the Decider.
+
+    The first result supplies the observed-symptom phrases for this offline
+    adapter. S4 aggregation is unavailable, and S3 remains unavailable until
+    T04 provides measured image quality; therefore route_signals fails closed.
+    No provider is created or invoked here.
+    """
+    results = (first, second)
+    if any(
+        not isinstance(result, DiagnosisResult)
+        or result.status is not DiagnosisStatus.VALID
+        or not isinstance(result.output, DiagnosisOutput)
+        for result in results
+    ):
+        raise OfflineCoordinatorError("two validated Tier-1 results are required")
+    left, right = first.output, second.output
+    assert isinstance(left, DiagnosisOutput) and isinstance(right, DiagnosisOutput)
+    s1 = extract_agreement(
+        {"crop": left.crop, "disease": left.issue},
+        {"crop": right.crop, "disease": right.issue},
+    )
+    if (left.crop, left.issue) != (right.crop, right.issue):
+        s2 = unavailable("tier1_labels_disagree")
+    else:
+        s2 = extract_kb_match(left.issue, cards, left.symptoms_observed)
+    return route_signals(
+        SignalSet(
+            s1=s1,
+            s2=s2,
+            s3=extract_quality(),
+            s4=unavailable("tier1_confidence_aggregation_unresolved"),
+        ),
+        weights=weights,
+        thresholds=thresholds,
+        escalated=escalated,
+        followups_used=followups_used,
+    )

@@ -11,16 +11,27 @@ from mydrak.workflow.coordinator import (
     OfflineCoordinatorError,
     SyntheticSamReplyFixture,
     coordinate_followup_answer,
+    coordinate_mock_tier1_results,
     coordinate_offline_case,
 )
 from mydrak.workflow.followup import FollowUpState, begin_followup
 from mydrak.trace.store import TraceStore
+from mydrak.vision.diagnosis import DiagnosisResult, DiagnosisStatus, run_diagnosis_validation
 
 from conftest import REPO_ROOT
 
 
 SAFETY = load_safety_card(REPO_ROOT / "kb" / "cards" / "general_safety.yaml")
 IMAGE = {"format": "jpeg", "width": 100, "height": 80, "size_bytes": 1024}
+SYNTHETIC_WEIGHTS = {
+    "s1_agreement": 0.25,
+    "s2_kb_match": 0.25,
+    "s3_quality": 0.25,
+    "s4_stated_confidence": 0.25,
+}
+SYNTHETIC_THRESHOLDS = {
+    "accept": 0.7, "agree_min": 0.5, "quality_min": 0.4, "max_followups": 2,
+}
 PUBLIC_TEST_EVIDENCE = ProcessingEvidence(
     provider_mode=ProviderMode.STANDARD,
     provider_mode_verified=True,
@@ -201,3 +212,70 @@ def test_followup_answer_bridge_uses_existing_bounded_state():
     assert final.action == "refer"
     assert final.state.referred is True
     assert final.state.turns_used == 2
+
+
+def _synthetic_tier1_result():
+    class FakeTier1Provider:
+        def generate(self):
+            return json.dumps({
+                "plant_visible": True,
+                "crop": "synthetic_crop",
+                "issue": "synthetic_issue",
+                "alternatives": [],
+                "symptoms_observed": ["leaf spot"],
+                "image_issues": [],
+                "stated_confidence": 0.7,
+                "segment_prompts": ["synthetic prompt"],
+            })
+
+        def repair(self, invalid_output):
+            raise AssertionError("valid synthetic fixture must not be repaired")
+
+    return run_diagnosis_validation(
+        FakeTier1Provider(),
+        supported_crops=("synthetic_crop",),
+        disease_ids=("synthetic_issue",),
+    )
+
+
+def test_coordinator_routes_mock_tier1_results_and_s3_fails_closed(monkeypatch):
+    captured = {}
+    actual_route = coordinator.route_signals
+
+    def capture_route(signals, **kwargs):
+        captured["signals"] = signals
+        return actual_route(signals, **kwargs)
+
+    monkeypatch.setattr(coordinator, "route_signals", capture_route)
+    result = coordinate_mock_tier1_results(
+        _synthetic_tier1_result(),
+        _synthetic_tier1_result(),
+        cards=[{"id": "synthetic_issue", "symptoms": ["Leaf spot.", "extra"]}],
+        weights=SYNTHETIC_WEIGHTS,
+        thresholds=SYNTHETIC_THRESHOLDS,
+    )
+
+    assert captured["signals"].s1.value == 1.0
+    assert captured["signals"].s2.value == 1.0
+    assert captured["signals"].s3.value is None
+    assert result.action == "refer"
+    assert result.score is None
+    assert result.unavailable_signals == ("s3", "s4")
+
+
+def test_coordinator_rejects_nonvalidated_tier1_result():
+    invalid = DiagnosisResult(DiagnosisStatus.UNKNOWN, None, "synthetic-invalid")
+    with pytest.raises(OfflineCoordinatorError, match="validated Tier-1"):
+        coordinate_mock_tier1_results(
+            invalid, _synthetic_tier1_result(), cards=[],
+            weights=SYNTHETIC_WEIGHTS, thresholds=SYNTHETIC_THRESHOLDS,
+        )
+
+
+def test_coordinator_rejects_malformed_valid_result_object():
+    malformed = DiagnosisResult(DiagnosisStatus.VALID, object(), "synthetic-invalid")
+    with pytest.raises(OfflineCoordinatorError, match="validated Tier-1"):
+        coordinate_mock_tier1_results(
+            malformed, _synthetic_tier1_result(), cards=[],
+            weights=SYNTHETIC_WEIGHTS, thresholds=SYNTHETIC_THRESHOLDS,
+        )
