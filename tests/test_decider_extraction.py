@@ -19,7 +19,7 @@ from mydrak.decider.extraction import (
     unavailable,
 )
 from mydrak.decider.policy import decide
-from mydrak.decider.signals import combine
+from mydrak.decider.signals import combine, s2_symptom_overlap
 from mydrak.trace.store import TraceCase, TraceError, TraceStep, TraceStore
 
 
@@ -65,14 +65,48 @@ def test_s1_missing_or_malformed_samples_are_unavailable(first, second):
 
 
 def test_s2_only_explicit_no_card_case_is_zero():
-    assert extract_kb_match("unknown-label", []).value == 0.0
-    assert extract_kb_match("issue-a", [{"id": "other"}]).value == 0.0
+    assert extract_kb_match("unknown-label", [], ["leaf spot"]).value == 0.0
+    assert extract_kb_match("issue-a", [{"id": "other"}], ["leaf spot"]).value == 0.0
 
 
-def test_s2_matching_card_stays_unavailable_until_overlap_contract_is_defined():
-    result = extract_kb_match("issue-a", [{"id": "issue-a", "symptoms": ["synthetic"]}])
-    assert result.value is None
-    assert result.reason == "symptom_overlap_contract_unresolved"
+@pytest.mark.parametrize(
+    ("observed", "card", "expected"),
+    [
+        ([], ["leaf spot"], None),
+        (["Leaf spot", " leaf   spot ", "LEAF SPOT."], ["leaf spot"], 1.0),
+        (["leaf-spot"], ["leaf spot"], 1.0),
+        (["leaf spot", "yellowing"], ["leaf spot", "extra card symptom"], 0.5),
+        (["leaf spot"], [], 0.0),
+    ],
+)
+def test_s2_distinct_normalized_phrase_overlap(observed, card, expected):
+    assert s2_symptom_overlap(observed, card) == expected
+
+
+@pytest.mark.parametrize(
+    ("label", "cards", "observed", "expected"),
+    [
+        ("issue-a", [{"id": "other", "symptoms": ["leaf spot"]}], ["leaf spot"], 0.0),
+        ("issue-a", [{"id": "issue-a", "symptoms": []}], ["leaf spot"], 0.0),
+        ("issue-a", [{"id": "issue-a", "symptoms": ["leaf spot"]}], [], None),
+    ],
+)
+def test_s2_card_matching_and_unavailable_boundaries(label, cards, observed, expected):
+    assert extract_kb_match(label, cards, observed).value == expected
+
+
+@pytest.mark.parametrize(
+    ("observed", "card"),
+    [
+        ("leaf spot", ["leaf spot"]),
+        (["leaf spot", 1], ["leaf spot"]),
+        (["leaf"], "leaf"),
+        (["!!!"], ["leaf"]),
+    ],
+)
+def test_s2_malformed_phrase_lists_reject_safely(observed, card):
+    with pytest.raises(ValueError):
+        s2_symptom_overlap(observed, card)
 
 
 @pytest.mark.parametrize(

@@ -17,9 +17,14 @@ def test_charts_mark_synthetic_and_unknown_cost():
         "price_in_per_1m": None, "price_out_per_1m": None,
         "out_of_scope": True, "provenance": "synthetic_fixture", "score": 0.5,
     }
-    metrics = compute_metrics([row])
-    cost_chart = cost_accuracy_svg(metrics, [row])
-    coverage_chart = accuracy_coverage_svg({"<unsafe>": accuracy_coverage_curve([row])}, [row])
+    predicted_row = {
+        **row, "case_id": "synthetic-02", "predicted": "x", "action": "answer",
+        "score": 0.8,
+    }
+    rows = [row, predicted_row]
+    metrics = compute_metrics(rows)
+    cost_chart = cost_accuracy_svg(metrics, rows)
+    coverage_chart = accuracy_coverage_svg({"<unsafe>": accuracy_coverage_curve(rows)}, rows)
     ElementTree.fromstring(cost_chart)
     ElementTree.fromstring(coverage_chart)
     assert "SYNTHETIC FIXTURE" in cost_chart and "cost unknown" in cost_chart
@@ -42,6 +47,7 @@ def test_cli_writes_offline_artifacts_and_marks_missing_thresholds(tmp_path):
     code = main([
         "--labels", str(root / "synthetic_labels.csv"),
         "--predictions", str(root / "synthetic_predictions.json"),
+        "--strategy", "all",
         "--run-id", "synthetic-smoke", "--out-dir", str(output),
         "--frozen-thresholds", str(tmp_path / "not-present.json"),
     ])

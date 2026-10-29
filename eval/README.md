@@ -27,10 +27,11 @@ Example (using only repository test fixtures):
 python3 eval/run_eval.py \
   --labels tests/fixtures/eval/synthetic_labels.csv \
   --predictions tests/fixtures/eval/synthetic_predictions.json \
-  --mode replay --run-id synthetic-example
+  --mode replay --strategy all --run-id synthetic-example
 ```
 
-`--mode` accepts only `replay`; live mode is rejected. Output files are placed
+`--strategy all` evaluates every strategy present in the supplied predictions;
+single-strategy filtering is not implemented. `--mode` accepts only `replay`; live mode is rejected. Output files are placed
 under `eval/results/` by default. Reporting computes metrics only for test
 records. Threshold metadata is loaded only from a caller-provided frozen JSON
 file matching the documented local envelope (`schema`, `frozen`,
@@ -43,15 +44,18 @@ the tool does not tune or invent thresholds. It does not assume
 - Answered accuracy compares predictions only among `answer` cases.
 - All-case accuracy counts only correct `answer` cases; deferrals and retakes
   are incorrect for this metric. Coverage is `answer` cases / all cases.
-- Escalation rate uses the recorded `escalated` flag. Deferral rate counts
+- Escalation rate counts the recorded `escalated` flag or an expert referral
+  (`action: refer`). Deferral rate counts
   `ask` and `refer`; retakes are reported separately.
 - Cost/task uses recorded tokens and per-million input/output prices. If any
   required value is missing for any strategy row, cost is `UNKNOWN` (`null`),
   never zero. Prices must be verified before interpreting cost as real.
 - Median latency uses the midpoint for an even sample; p90 uses nearest rank.
 - Out-of-scope uncertainty handling counts `ask`, `refer`, or `retake` actions.
-- Curves include only records with recorded scores, at their distinct score
-  cutoffs. They describe observed data and do not choose a threshold.
+- Curves use records with recorded scores as the denominator; a row is covered
+  at a cutoff only when it also has a prediction and meets that cutoff. Curve
+  accuracy compares admitted predictions with labels. These descriptive
+  project-local conventions do not choose a threshold.
 
 The metric denominator choices above are explicit project-local conventions
 for this harness. Synthetic fixtures validate mechanics only; they are not

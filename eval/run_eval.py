@@ -123,6 +123,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--labels", required=True, type=Path)
     parser.add_argument("--predictions", required=True, type=Path)
+    parser.add_argument(
+        "--strategy", default="all", choices=("all",),
+        help="evaluate all strategies present in the supplied predictions",
+    )
     parser.add_argument("--mode", default="replay", choices=("replay",))
     parser.add_argument("--run-id", default=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
     parser.add_argument("--out-dir", type=Path, default=Path(__file__).parent / "results")

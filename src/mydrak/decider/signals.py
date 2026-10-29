@@ -5,12 +5,52 @@ Each signal ranges 0..1; weights must sum to 1.
 """
 
 import math
+import unicodedata
 from collections.abc import Mapping
 from numbers import Real
 
 SIGNAL_WEIGHT_KEYS = frozenset({
     "s1_agreement", "s2_kb_match", "s3_quality", "s4_stated_confidence",
 })
+
+
+def _normalize_symptom(value: object) -> str:
+    if not isinstance(value, str):
+        raise ValueError("symptom phrases must be text")
+    text = value.strip().lower()
+    if not text:
+        raise ValueError("symptom phrases must be nonempty")
+    # Treat punctuation as a word boundary, then collapse all whitespace.
+    normalized = " ".join(
+        "".join(" " if unicodedata.category(char).startswith("P") else char for char in text).split()
+    )
+    if not normalized:
+        raise ValueError("symptom phrases must contain non-punctuation text")
+    return normalized
+
+
+def s2_symptom_overlap(
+    observed_symptoms: object,
+    card_symptoms: object,
+) -> float | None:
+    """Return distinct observed phrase matches / distinct observations.
+
+    Punctuation is normalized to word boundaries; matching is exact after
+    case, whitespace, and punctuation normalization. Extra card phrases do not
+    affect the denominator. No observations means the signal is unavailable.
+    """
+    if (
+        isinstance(observed_symptoms, (str, bytes))
+        or not isinstance(observed_symptoms, (list, tuple))
+        or isinstance(card_symptoms, (str, bytes))
+        or not isinstance(card_symptoms, (list, tuple))
+    ):
+        raise ValueError("symptom phrases must be lists or tuples")
+    observed = {_normalize_symptom(value) for value in observed_symptoms}
+    card = {_normalize_symptom(value) for value in card_symptoms}
+    if not observed:
+        return None
+    return len(observed & card) / len(observed)
 
 
 def _check_unit(name: str, value: float) -> None:

@@ -24,7 +24,7 @@ B6 further requires treatment text to come only from cards; Hindi text must be p
 - `validate_disease_card()` / `load_disease_card()` check structure. The non-empty chemical-option shape `{text, source, label_instruction}` is explicitly a project-local minimum because B6 does not define that record shape. Validation does not assess source quality or reviewer qualifications.
 - Tests in `tests/test_disease_card_schema.py` use synthetic placeholders only.
 - T05 `validate_diagnosis_json()` accepts `supported_crops` and `disease_ids` from its caller; no approved production vocabulary is wired to cards.
-- T11 `extract_kb_match()` returns 0 for a no-card label and leaves a matching card's overlap unavailable. B3 calls for keyword overlap fraction but does not define normalization/tokenization, numerator/denominator, bilingual handling, or a complete mapping from overlap to S2. No matcher is justified yet.
+- T11 `extract_kb_match()` returns 0 for a no-card label and computes overlap for a supplied matching card using the project-approved S2 contract: distinct observed phrases that exactly match normalized card phrases divided by distinct normalized observed phrases. Normalization lowercases, trims, collapses whitespace, and turns punctuation into word boundaries. Extra card phrases do not affect the denominator; no observations return unavailable. This is a project-local decision, not a claim that B3 specifies those mechanics. No production disease-card corpus exists.
 
 ## Content workflow (requirements vs. recommendation)
 
@@ -40,10 +40,10 @@ English and Hindi content must both be present. B6 specifically requires native-
 2. Approve a source-selection standard and source set appropriate to that region, including how each claim will be traceable to a source locator.
 3. Assign the agronomic/source reviewer and native Hindi reviewer, and decide where dated review evidence will live. Do not fill `reviewed_by` until review actually occurs.
 4. Decide whether cards will contain any chemical options. If yes, confirm the project-local record shape before authoring; B6 only requires a citation and label instruction, while the validator currently requires `{text, source, label_instruction}`.
-5. Separately approve B3 S2's language normalization, tokenization, overlap numerator/denominator, and score handling before implementing matching.
+5. Treat the S2 phrase normalization and denominator as project-local implementation choices. Before production use, decide whether language-specific synonym/translation handling is needed; current matching is exact phrase matching only and does not translate or infer equivalence.
 
 ## Safe allowlist and matching path
 
 After cards are sourced and approved, validate every card, then build the trusted T05 crop allowlist from the unique `crop` values and disease-ID allowlist from unique `id` values in that approved production-card set. Exclude `general_safety.yaml` and all synthetic/test fixtures. Fail closed on missing/duplicate IDs, unapproved crop values, or cards lacking review evidence. This derivation is a proposed repository process; no production card set currently exists.
 
-Do not implement a disease matcher until both that approved card set and the B3 S2 overlap contract exist. No disease facts, citations, treatment content, reviewer identities, or approvals are supplied by this plan.
+The S2 overlap helper exists, but do not use it as production matching until the approved card set and trusted vocabulary exist. No disease facts, citations, treatment content, reviewer identities, or approvals are supplied by this plan.
