@@ -379,3 +379,10 @@
 - Metric conventions: deferrals/retakes count incorrect in all-case accuracy; coverage means answered/all; escalation uses the explicit recorded flag; missing price/token data yields unknown cost. These are stated project-local conventions, not new master-spec definitions. Scores only produce descriptive curves; no threshold is selected or tuned on test data.
 - Verification: focused tests **23 passed** (`python3 -m pytest tests/test_eval_metrics.py tests/test_eval_chart.py -q`); full suite **916 passed** (`python3 -m pytest -q`); `python3 -m compileall -q src tests eval` and `git diff --check` passed. Additional secret-pattern, `.env` metadata, and untracked-whitespace results are in `docs/muse-code-log/t13-eval-core-codex.md`.
 - No network/API calls, credentials, media, credits, dependency installs, or Git history operations. Live SAM remains **NO-GO**.
+
+## 2026-10-29 — T13 evaluation gap check
+
+- What changed: corrected escalation rate to count both the recorded escalation flag and expert referrals; corrected score-curve coverage to require a prediction while retaining score-bearing cases in the denominator; exposed `--strategy all` in the offline CLI. Updated metric/CLI docs and the T13 roadmap status. `eval/chart.py` was not changed.
+- Regression coverage: tests now cover expert referral with the escalation flag false, deferred/no-prediction curve rows, all-deferred zero coverage, missing each required cost input, and the explicit all-strategy CLI invocation.
+- Verification: focused metrics/chart tests **30 passed**; full suite **923 passed**; compileall and `git diff --check` passed. Configuration parsing, safe secret scan, `.env` metadata checks, and new-file whitespace results are recorded in `docs/muse-code-log/t13-eval-gap-check-codex.md`.
+- Status: T13 offline core remains **PARTIAL**; real-data evaluation remains **BLOCKED** pending licensed/labeled cases, recorded outcomes and verified measurement evidence. No data images were accessed or relabeled. No live evaluation or SAM test was performed.

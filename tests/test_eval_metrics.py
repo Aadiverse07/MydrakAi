@@ -30,6 +30,17 @@ def test_empty_input_is_empty_and_unknown_cost_is_not_zero():
     assert result["cost_unknown"] is True
 
 
+@pytest.mark.parametrize(
+    "missing",
+    ["tokens_in", "tokens_out", "price_in_per_1m", "price_out_per_1m"],
+)
+def test_missing_any_required_cost_input_is_unknown(missing):
+    result = compute_metrics([record(**{missing: None})])["synthetic_strategy"]
+    assert result["cost_total_usd"] is None
+    assert result["cost_per_task_usd"] is None
+    assert result["cost_unknown"] is True
+
+
 def test_all_deferred_has_no_answer_accuracy_or_coverage():
     result = compute_metrics([record(predicted=None, action="ask")])["synthetic_strategy"]
     assert result["accuracy_answered"] is None
@@ -63,8 +74,42 @@ def test_out_of_scope_uncertainty_and_score_curve():
     assert result["out_of_scope_count"] == 2
     assert result["out_of_scope_uncertainty_handled"] == 0.5
     curve = accuracy_coverage_curve(rows)
-    assert curve[0]["coverage"] == 1
+    assert curve[0]["coverage"] == 0.5
     assert curve[-1]["coverage"] == 0.5
+    assert curve[0]["accuracy"] == 1
+
+
+def test_expert_referral_counts_as_escalation_without_spark_flag():
+    result = compute_metrics([record(action="refer", escalated=False)])[
+        "synthetic_strategy"
+    ]
+    assert result["escalation_rate"] == 1
+    assert result["deferral_rate"] == 1
+
+
+def test_score_curve_does_not_count_deferred_unpredicted_rows_as_coverage():
+    rows = [
+        record(case_id="synthetic-answer", score=0.9),
+        record(
+            case_id="synthetic-deferred", predicted=None, action="ask", score=0.8
+        ),
+    ]
+    curve = accuracy_coverage_curve(rows)
+    assert curve[0]["coverage"] == 0.5
+    assert curve[0]["accepted_count"] == 1
+    assert curve[0]["accuracy"] == 1
+
+
+def test_all_deferred_unpredicted_rows_have_zero_curve_coverage():
+    rows = [
+        record(case_id=f"synthetic-{index}", predicted=None, action="ask", score=0.8)
+        for index in range(2)
+    ]
+    curve = accuracy_coverage_curve(rows)
+    assert curve
+    assert all(point["coverage"] == 0 for point in curve)
+    assert all(point["accuracy"] is None for point in curve)
+    assert all(point["accepted_count"] == 0 for point in curve)
 
 
 @pytest.mark.parametrize("changes", [

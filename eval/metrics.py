@@ -123,7 +123,8 @@ def _strategy_metrics(strategy: str, rows: list[dict[str, Any]]) -> dict[str, An
         for row in rows
     )
     correct_answered = sum(row["predicted"] == row["label"] for row in answered)
-    escalations = sum(row["escalated"] for row in rows)
+    # D1 counts both model-tier escalation and cases sent to an expert.
+    escalations = sum(row["escalated"] or row["action"] == "refer" for row in rows)
     deferrals = sum(row["action"] in {"ask", "refer"} for row in rows)
     retakes = sum(row["action"] == "retake" for row in rows)
     out_of_scope = [row for row in rows if row["out_of_scope"]]
@@ -191,11 +192,14 @@ def accuracy_coverage_curve(records: Sequence[Mapping[str, object]]) -> list[dic
     thresholds = sorted({0.0, *(row["score"] for row in scored)})
     curve = []
     for threshold in thresholds:
-        accepted = [row for row in scored if row["score"] >= threshold]
-        correct = sum(
-            row["action"] == "answer" and row["predicted"] == row["label"]
-            for row in accepted
-        )
+        # A score alone does not establish coverage: the row must also carry a
+        # prediction that the threshold could admit. The denominator remains
+        # all scored cases, including deferred rows with no prediction.
+        accepted = [
+            row for row in scored
+            if row["score"] >= threshold and row["predicted"] is not None
+        ]
+        correct = sum(row["predicted"] == row["label"] for row in accepted)
         curve.append({
             "threshold": threshold,
             "coverage": len(accepted) / len(scored),
