@@ -1,8 +1,61 @@
-# eval — evaluation harness (deferred past Phase 0)
+# Offline evaluation core
 
-Planned (spec D1/D2): 30 labeled images (dev 20 / test 10), 3 strategies
-(always-Spark, always-Glimmer, Mydrak routing), metrics JSON + markdown table +
-accuracy-vs-coverage and cost/accuracy charts via `run_eval.py`.
+This standard-library-only harness implements the input/metrics/reporting core
+for the master specification's D1/D2 evaluation requirements. It does not
+load, label, decode, or inspect images and does not invoke model providers.
+The existing `image_report.py` remains a separate header-only inventory tool;
+the ten files in `data/dev` are not labels or evaluation cases.
 
-Phase 0: no harness code, no images, no labels, no results. `data/dev/` and
-`data/test/` intentionally empty; see `data/SOURCES.md` for sourcing rules.
+## Input contract
+
+Labels CSV columns are exactly `case_id,split,label,out_of_scope,provenance`;
+`split` is `dev` or `test`, and `out_of_scope` is `true` or `false`.
+Predictions JSON is a list with one object for each label and each provided
+strategy. Objects contain the metrics record fields `case_id`, `strategy`,
+`predicted`, `action`, `escalated`, `tokens_in`, `tokens_out`, `latency_ms`,
+`price_in_per_1m`, `price_out_per_1m`, and optional `score` in [0,1]. Actions
+are `answer`, `ask`, `refer`, or `retake`. Predictions must include every case
+for every strategy; missing rows are errors. `score` is an optional recorded
+score, included for descriptive accuracy/coverage curves; its meaning and
+threshold mapping remain project-local and are not inferred by this tool.
+`provenance` should identify synthetic fixtures (for example,
+`synthetic_fixture`) so all report surfaces can label them.
+
+Example (using only repository test fixtures):
+
+```sh
+python3 eval/run_eval.py \
+  --labels tests/fixtures/eval/synthetic_labels.csv \
+  --predictions tests/fixtures/eval/synthetic_predictions.json \
+  --mode replay --run-id synthetic-example
+```
+
+`--mode` accepts only `replay`; live mode is rejected. Output files are placed
+under `eval/results/` by default. Reporting computes metrics only for test
+records. Threshold metadata is loaded only from a caller-provided frozen JSON
+file matching the documented local envelope (`schema`, `frozen`,
+`thresholds`). When no file exists, each output says thresholds are missing;
+the tool does not tune or invent thresholds. It does not assume
+`config/thresholds.yaml` placeholders are frozen thresholds.
+
+## Metrics and limitations
+
+- Answered accuracy compares predictions only among `answer` cases.
+- All-case accuracy counts only correct `answer` cases; deferrals and retakes
+  are incorrect for this metric. Coverage is `answer` cases / all cases.
+- Escalation rate uses the recorded `escalated` flag. Deferral rate counts
+  `ask` and `refer`; retakes are reported separately.
+- Cost/task uses recorded tokens and per-million input/output prices. If any
+  required value is missing for any strategy row, cost is `UNKNOWN` (`null`),
+  never zero. Prices must be verified before interpreting cost as real.
+- Median latency uses the midpoint for an even sample; p90 uses nearest rank.
+- Out-of-scope uncertainty handling counts `ask`, `refer`, or `retake` actions.
+- Curves include only records with recorded scores, at their distinct score
+  cutoffs. They describe observed data and do not choose a threshold.
+
+The metric denominator choices above are explicit project-local conventions
+for this harness. Synthetic fixtures validate mechanics only; they are not
+diagnoses, measured model results, or provider responses. No accuracy, cost,
+savings, general reliability, or agricultural safety claim follows from them.
+T13 remains blocked for the specification's real licensed/labeled dataset,
+actual strategy predictions, and verified token/latency/pricing evidence.
