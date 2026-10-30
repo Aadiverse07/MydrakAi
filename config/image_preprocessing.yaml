@@ -1,0 +1,7 @@
+# Project-local image preprocessing values; none are calibrated or provider limits.
+max_long_edge: 2048 # UNVERIFIED resize cap; verify for deployment.
+jpeg_quality: 85 # UNVERIFIED project-local recompression setting.
+retake_enabled: false # Deliberately disabled; T04 measurements do not route.
+leaf_hue_min: 35 # UNVERIFIED green-pixel proxy thresholds (Pillow HSV scale 0..255).
+leaf_hue_max: 150 # UNVERIFIED; not botanical segmentation.
+leaf_saturation_min: 40 # UNVERIFIED; not a quality or retake threshold.

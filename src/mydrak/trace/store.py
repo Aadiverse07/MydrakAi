@@ -154,6 +154,15 @@ class TraceStore:
                     decision TEXT NOT NULL,
                     escalated INTEGER NOT NULL CHECK (escalated IN (0, 1))
                 );
+                CREATE TABLE IF NOT EXISTS image_measurements (
+                    case_id TEXT PRIMARY KEY REFERENCES cases(case_id) ON DELETE CASCADE,
+                    laplacian_variance REAL NOT NULL CHECK (laplacian_variance >= 0),
+                    mean_brightness_0_255 REAL NOT NULL
+                        CHECK (mean_brightness_0_255 BETWEEN 0 AND 255),
+                    leaf_coverage_fraction REAL NOT NULL
+                        CHECK (leaf_coverage_fraction BETWEEN 0 AND 1),
+                    leaf_coverage_method TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS scans (
                     scan_id TEXT PRIMARY KEY,
                     user_hash TEXT NOT NULL,
@@ -220,6 +229,58 @@ class TraceStore:
             "SELECT * FROM steps WHERE case_id=? ORDER BY ordinal", (case_id,)
         ).fetchall()
         return [dict(row) for row in rows]
+
+    def record_image_measurements(
+        self,
+        case_id: str,
+        *,
+        laplacian_variance: float,
+        mean_brightness: float,
+        leaf_coverage_fraction: float,
+        leaf_coverage_method: str,
+    ) -> None:
+        """Persist observation-only T04 values separately from B3 signals."""
+        if not isinstance(case_id, str) or not re.fullmatch(r"[0-9a-f]{32}", case_id):
+            raise TraceError("case ID must be a generated lowercase UUID hex value")
+        values = (laplacian_variance, mean_brightness, leaf_coverage_fraction)
+        if any(type(value) not in {int, float} for value in values):
+            raise TraceError("image measurements must be finite numbers")
+        try:
+            laplacian_variance, mean_brightness, leaf_coverage_fraction = (
+                float(value) for value in values
+            )
+        except OverflowError:
+            raise TraceError("image measurements must be finite numbers") from None
+        values = (laplacian_variance, mean_brightness, leaf_coverage_fraction)
+        if any(not math.isfinite(value) for value in values):
+            raise TraceError("image measurements must be finite numbers")
+        if laplacian_variance < 0 or not 0 <= mean_brightness <= 255 or not 0 <= leaf_coverage_fraction <= 1:
+            raise TraceError("image measurements are outside their measurement ranges")
+        if leaf_coverage_method != "unverified_green_hue_pixel_proxy":
+            raise TraceError("image measurement method is unsupported")
+        try:
+            with self._connection:
+                self._connection.execute(
+                    """INSERT INTO image_measurements(
+                         case_id,laplacian_variance,mean_brightness_0_255,
+                         leaf_coverage_fraction,leaf_coverage_method)
+                       VALUES(?,?,?,?,?)""",
+                    (case_id, laplacian_variance, mean_brightness,
+                     leaf_coverage_fraction, leaf_coverage_method),
+                )
+        except sqlite3.IntegrityError:
+            raise TraceError("image measurements require a new existing case") from None
+        except sqlite3.Error:
+            raise TraceError("image measurements could not be stored") from None
+
+    def get_image_measurements(self, case_id: str) -> dict[str, Any] | None:
+        """Read T04 observations without mapping them to S3 or routing."""
+        if not isinstance(case_id, str) or not re.fullmatch(r"[0-9a-f]{32}", case_id):
+            raise TraceError("case ID must be a generated lowercase UUID hex value")
+        row = self._connection.execute(
+            "SELECT * FROM image_measurements WHERE case_id=?", (case_id,)
+        ).fetchone()
+        return dict(row) if row else None
 
     def record_signals(
         self,

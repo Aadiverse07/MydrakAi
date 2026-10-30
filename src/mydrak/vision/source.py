@@ -1,11 +1,9 @@
-"""Offline local image-header reader (Phase 2, Task 2).
+"""Offline local PNG/JPEG byte reader and header validator.
 
-Reads a real file from local disk and validates ONLY its header: magic,
-segment structure, and dimensions. This proves the file starts like a
-PNG/JPEG of the stated size. It does NOT prove the trailing payload is
-intact, the pixels decode, or the full file is valid — there is
-deliberately no decoder here (see Option A limits). A header-valid but
-payload-garbage file passes, by design.
+Reads a real file from local disk and validates its header: magic, segment
+structure, and dimensions. This proves the file starts like a PNG/JPEG of
+the stated size, but not that the payload is intact or decodable. T04's
+preprocessing module performs the additional bounded pixel decode.
 
 PNG: 8-byte signature, first chunk must be IHDR with length exactly 13;
 width/height big-endian. The IHDR CRC is NOT validated.
@@ -18,8 +16,8 @@ bare SOF-like bytes without a preceding SOI are all malformed.
 The file is opened once and at most MAX_IMAGE_BYTES + 1 bytes are read, so
 the size cap holds even if the file grows between inspection and read.
 
-Reuses intake caps and errors; never touches network, models, or media
-pipelines. No new dependency (stdlib struct/os only).
+Reuses intake caps and errors; never touches network, models, or outbound
+media pipelines. Pixel decoding is handled by the T04 preprocessing module.
 """
 
 import os
@@ -111,6 +109,12 @@ def _parse_sof(data: bytes, pos: int, seg_length: int) -> tuple[str, int, int]:
 
 def read_local_image(path: str | os.PathLike[str]) -> IntakeImage:
     """Read a local PNG/JPEG header into an IntakeImage descriptor."""
+    _, descriptor = read_local_image_data(path)
+    return descriptor
+
+
+def read_local_image_data(path: str | os.PathLike[str]) -> tuple[bytes, IntakeImage]:
+    """Read one bounded local file and return bytes plus its header descriptor."""
     if not isinstance(path, (str, os.PathLike)):
         raise IntakeError("image path must be a string or path-like object")
     try:
@@ -135,4 +139,5 @@ def read_local_image(path: str | os.PathLike[str]) -> IntakeImage:
         fmt, width, height = _jpeg_dimensions(data)
     else:
         raise IntakeError("unsupported image format (expected PNG or JPEG bytes)")
-    return IntakeImage(format=fmt, width=width, height=height, size_bytes=len(data))
+    descriptor = IntakeImage(format=fmt, width=width, height=height, size_bytes=len(data))
+    return data, descriptor

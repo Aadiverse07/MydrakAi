@@ -1,5 +1,12 @@
 # Daily log
 
+## 2026-10-30 — T04 offline image preprocessing measurements (Codex)
+
+- What changed: after the user confirmed Pillow imports, added bounded Pillow decoding for local PNG/JPEG inputs, EXIF transpose, an explicitly UNVERIFIED long-edge cap, project-local JPEG normalization, and a SHA-256 hash of normalized bytes. Added measurement-only Laplacian variance, mean grayscale brightness, and a clearly UNVERIFIED green-hue pixel proxy for leaf coverage. Measurements can be stored in a dedicated trace table and are not mapped to S3, quality scores, or routing. Retake routing remains disabled. Pillow is approved for T04 only.
+- Limits: resize cap (2048), JPEG quality (85), and green-pixel proxy parameters are project-local and UNVERIFIED, not calibrated criteria or provider constraints. Synthetic fixtures verify deterministic behavior only. No quality score, retake decision, B3 S3 signal, agronomic leaf segmentation, or real-image accuracy is claimed. T04 remains PARTIAL pending approved quality thresholds/mapping and workflow integration.
+- Verification: focused preprocessing/trace/header tests **65 passed**; full suite **982 passed**. Follow-up compile/config/security/metadata/whitespace results are recorded in `docs/muse-code-log/t04-image-preprocessing.md`.
+- No network/API calls, media uploads, credential access, `.env` reads, dependency installation, or Git history operations. Live SAM remains NO-GO.
+
 ## 2026-10-30 — T06 registry gap tier and test regression check (Codex)
 
 - Compared `git diff e087e23 ef1aa7b -- tests/`. The title-verification parameter case was obsolete because `title_verified` is not in the revised registry contract; the PAU edition-year test was obsolete because `edition_year` is not in that contract. The `gap` citation parameter had been dropped solely because the enum omitted it; restored it as a non-citable tier and added an enum-acceptance test.

@@ -134,3 +134,42 @@ def test_b9_signal_row_requires_existing_case_and_rejects_duplicate():
     store.record_signals(case_id, **args)
     with pytest.raises(TraceError, match="duplicate"):
         store.record_signals(case_id, **args)
+
+
+def test_t04_image_measurements_are_separate_validated_observations():
+    store = TraceStore(":memory:")
+    case_id = "00000000000000000000000000000091"
+    store.record_case(_case(case_id), [TraceStep("preprocess", "completed", 0.0)])
+    store.record_image_measurements(
+        case_id, laplacian_variance=12.5, mean_brightness=123.0,
+        leaf_coverage_fraction=0.25,
+        leaf_coverage_method="unverified_green_hue_pixel_proxy",
+    )
+    assert store.get_image_measurements(case_id)["leaf_coverage_fraction"] == 0.25
+    assert store.get_signals(case_id) is None
+    assert store.get_case(case_id)["quality_scores"] is None
+    with pytest.raises(TraceError):
+        store.record_image_measurements(
+            case_id, laplacian_variance=12.5, mean_brightness=123.0,
+            leaf_coverage_fraction=0.25,
+            leaf_coverage_method="unverified_green_hue_pixel_proxy",
+        )
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        (float("nan"), 1.0, 0.5), (1.0, float("inf"), 0.5),
+        (1.0, 1.0, 1.1), (-1.0, 1.0, 0.5), (1.0, 256.0, 0.5),
+        (True, 1.0, 0.5), (10**1000, 1.0, 0.5),
+    ],
+)
+def test_t04_image_measurements_reject_invalid_numbers(values):
+    store = TraceStore(":memory:")
+    with pytest.raises(TraceError):
+        store.record_image_measurements(
+            "00000000000000000000000000000092",
+            laplacian_variance=values[0], mean_brightness=values[1],
+            leaf_coverage_fraction=values[2],
+            leaf_coverage_method="unverified_green_hue_pixel_proxy",
+        )
