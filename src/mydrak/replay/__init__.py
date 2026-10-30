@@ -3,6 +3,7 @@
 from mydrak.replay.replay import (
     CachedReplayResult,
     OfflineReplayFixture,
+    REGISTERED_DEMO_SCENARIOS,
     ReplayError,
     ReplayResult,
     cache_replay_result,
@@ -11,6 +12,7 @@ from mydrak.replay.replay import (
     run_cached_replay,
     run_registered_cached_replay,
     run_replay,
+    seed_registered_demo_cache,
 )
 
 __all__ = [
@@ -18,10 +20,12 @@ __all__ = [
     "OfflineReplayFixture",
     "ReplayError",
     "ReplayResult",
+    "REGISTERED_DEMO_SCENARIOS",
     "cache_replay_result",
     "demo_cache_key",
     "registered_demo_cache_key",
     "run_cached_replay",
     "run_registered_cached_replay",
     "run_replay",
+    "seed_registered_demo_cache",
 ]

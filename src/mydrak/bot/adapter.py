@@ -19,6 +19,8 @@ from mydrak.privacy.data_policy import (
     require_external_processing_allowed,
 )
 from mydrak.trace.store import TraceStore
+from mydrak.bot.failure_support import record_bot_failure, retry_fake_send
+from mydrak.workflow.mock_providers import DeterministicMockTranscriber
 
 MAX_CONVERSATION_KEY_CHARS = 128  # Project-local bound for opaque synthetic keys.
 
@@ -67,10 +69,18 @@ class BotOutcome:
 class FakeTelegramTransport:
     """In-memory sink used only by deterministic offline tests."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, failures_remaining: int = 0) -> None:
+        if type(failures_remaining) is not int or not 0 <= failures_remaining <= 3:
+            raise ValueError("fake transport failure count is invalid")
         self.messages: list[tuple[str, str]] = []
+        self.failures_remaining = failures_remaining
+        self.send_calls = 0
 
     def send(self, conversation_key: str, text: str) -> None:
+        self.send_calls += 1
+        if self.failures_remaining:
+            self.failures_remaining -= 1
+            raise RuntimeError("synthetic fake Telegram send failure")
         self.messages.append((conversation_key, text))
 
 
@@ -86,6 +96,7 @@ class OfflineTelegramAdapter:
         transport: FakeTelegramTransport | None = None,
         outbound_enabled: bool = False,
         trace_store: TraceStore | None = None,
+        transcriber: DeterministicMockTranscriber | None = None,
     ) -> None:
         if type(outbound_enabled) is not bool:
             raise ValueError("outbound_enabled must be boolean")
@@ -99,12 +110,15 @@ class OfflineTelegramAdapter:
             raise ValueError("processing evidence is invalid")
         if trace_store is not None and type(trace_store) is not TraceStore:
             raise ValueError("only the local SQLite trace store is supported")
+        if transcriber is not None and type(transcriber) is not DeterministicMockTranscriber:
+            raise ValueError("only the deterministic mock transcriber is supported")
         self._data_policy_value = data_policy_value
         self._data_class = data_class
         self._evidence = evidence
         self._transport = transport
         self._outbound_enabled = outbound_enabled
         self._trace_store = trace_store
+        self._transcriber = transcriber
         self._states: dict[str, ConversationState] = {}
 
     def state_for(self, conversation_key: str) -> ConversationState:
@@ -158,10 +172,27 @@ class OfflineTelegramAdapter:
             outcome, next_state = self._photo(state)
         elif parsed.kind == "voice":
             if state.status is ConversationStatus.AWAITING_PHOTO:
-                outcome = BotOutcome(
-                    "deferred", state.status,
-                    "Voice processing is not available yet.", "audio_pipeline_unavailable",
-                )
+                try:
+                    if self._transcriber is None:
+                        raise RuntimeError("mock transcription boundary is unavailable")
+                    self._transcriber.transcribe()
+                except Exception:
+                    outcome = BotOutcome(
+                        "deferred", state.status,
+                        "Transcription failed in this offline mock. Please resend the voice note or type a short note.",
+                        "transcription_failed",
+                    )
+                    record_bot_failure(
+                        self._trace_store, conversation_key=parsed.conversation_key,
+                        language=state.language, input_type="voice", outcome="failed",
+                        action="ask", error_code="transcription_failed",
+                    )
+                else:
+                    outcome = BotOutcome(
+                        "deferred", state.status,
+                        "Mock transcription completed, but voice text processing is not available in this offline build.",
+                        "voice_text_processing_unavailable",
+                    )
             else:
                 outcome = self._invalid_transition(state)
             next_state = state
@@ -180,7 +211,7 @@ class OfflineTelegramAdapter:
             next_state = state
 
         self._states[parsed.conversation_key] = next_state
-        return self._deliver(parsed.conversation_key, outcome)
+        return self._deliver(parsed.conversation_key, outcome, language=state.language)
 
     def _coerce_update(
         self, update: OfflineUpdate | Mapping[str, object] | None
@@ -320,10 +351,24 @@ class OfflineTelegramAdapter:
     def _invalid_transition(state: ConversationState) -> BotOutcome:
         return BotOutcome("invalid_transition", state.status, None, "event_not_allowed_in_current_state")
 
-    def _deliver(self, key: str | None, outcome: BotOutcome) -> BotOutcome:
+    def _deliver(self, key: str | None, outcome: BotOutcome, *, language: str = "en") -> BotOutcome:
         if self._outbound_enabled and key is not None and outcome.reply is not None:
             # Exact-type validation at construction prevents custom/networking
             # transports from being selected, even if a caller opts in.
             assert type(self._transport) is FakeTelegramTransport
-            self._transport.send(key, outcome.reply)
+            delivered, retries = retry_fake_send(self._transport, key, outcome.reply)
+            if retries or not delivered:
+                action = outcome.status if outcome.status in {"answer", "ask", "refer", "retake"} else "refer"
+                record_bot_failure(
+                    self._trace_store, conversation_key=key,
+                    language=language, input_type="text",
+                    outcome="completed" if delivered else "failed",
+                    action=action, error_code="telegram_send_failure",
+                    retries=retries,
+                )
+            if not delivered:
+                return BotOutcome(
+                    "deferred", outcome.conversation_status, outcome.reply,
+                    "telegram_send_failed",
+                )
         return outcome

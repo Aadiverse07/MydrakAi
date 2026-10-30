@@ -16,7 +16,7 @@ from mydrak.workflow.mock_providers import (
     SYNTHETIC_MOCK_LABEL,
 )
 from mydrak.workflow.pipeline import (
-    MockWorkflowCache, TestOnlySignalOverride, WorkflowPipelineError,
+    TestOnlySignalOverride, WorkflowPipelineError,
     run_synthetic_mock_workflow,
 )
 from mydrak.workflow import pipeline
@@ -64,22 +64,22 @@ def _providers(*, disagreement=False, sam_fail=False, empty_masks=False):
 
 
 def _run(*, override=None, policy="public_test", evidence=EVIDENCE, photo=None,
-         providers=None, cache=None, store=None, language="en", user_hash=None):
+         providers=None, store=None, language="en", user_hash=None, voice_hint=None):
     glimmer, spark, sam = providers or _providers()
-    cache = cache or MockWorkflowCache()
     store = store or TraceStore(":memory:")
     result = run_synthetic_mock_workflow(
         photo if photo is not None else _photo(), language,
         glimmer_provider=glimmer, spark_provider=spark, sam_provider=sam,
-        trace_store=store, cache=cache, data_policy_value=policy,
+        trace_store=store, data_policy_value=policy,
         evidence=evidence, signal_override=override, user_hash=user_hash,
+        voice_hint=voice_hint,
     )
     if result.reply is not None:
         assert result.reply.startswith(SYNTHETIC_MOCK_LABEL)
         assert "preliminary guidance" in result.reply
         assert any(word in result.reply for word in ("fairly sure", "not sure", "cannot tell"))
         assert SAFETY["safety_line"] in result.reply
-    return result, (glimmer, spark, sam), cache, store
+    return result, (glimmer, spark, sam), None, store
 
 
 def _override(*, s2=1.0, s3=1.0, s4=1.0, word="fairly sure"):
@@ -108,12 +108,12 @@ def test_answer_uses_only_synthetic_test_card_and_has_safe_labels_and_trace():
     assert store.get_signals(result.case_id)["decision"] == "answer"
     names = [step["step_name"] for step in store.get_steps(result.case_id)]
     assert names.index("intake_gate") < names.index("preprocessing") < names.index("cache_lookup")
-    assert names.index("cache_lookup") < names.index("kb_signal_match") < names.index("glimmer_samples")
-    assert names.index("cache_lookup") < names.index("glimmer_samples") < names.index("decider")
+    assert names.index("cache_lookup") < names.index("kb_signal_match") < names.index("glimmer_sample_1")
+    assert names.index("glimmer_sample_1") < names.index("glimmer_sample_2") < names.index("decider")
     assert names.index("decider") < names.index("sam_parse") < names.index("mask_decode")
     assert names.index("severity_overlay") < names.index("kb_lookup") < names.index("reply_compose")
     trace_steps = store.get_steps(result.case_id)
-    assert {step["model"] for step in trace_steps if step["step_name"] in {"glimmer_samples", "sam_parse", "reply_compose"}} == {"synthetic_mock"}
+    assert {step["model"] for step in trace_steps if step["step_name"] in {"glimmer_sample_1", "glimmer_sample_2", "sam_parse", "reply_compose"}} == {"synthetic_mock"}
     rendered_trace = repr((case, store.get_steps(result.case_id), store.get_signals(result.case_id)))
     assert "Synthetic placeholder symptom" not in rendered_trace
     assert _photo().hex() not in rendered_trace
@@ -164,10 +164,10 @@ def test_glimmer_disagreement_triggers_exactly_one_spark_escalation():
 
 def test_glimmer_unavailable_goes_directly_to_one_spark_then_refers():
     glimmer, spark, sam = _providers()
-    glimmer.fail_calls = frozenset({0})
+    glimmer.timeout_calls = frozenset({0, 1, 2})
     result, _, _, store = _run(providers=(glimmer, spark, sam))
     assert result.action == "refer"
-    assert glimmer.generate_calls == 2 and spark.generate_calls == 1
+    assert glimmer.generate_calls == 3 and spark.generate_calls == 1
     assert result.spark_escalations == 1 and sam.generate_calls == 0
     assert "cannot tell" in result.reply
     assert store.get_signals(result.case_id)["escalated"] == 1
@@ -175,13 +175,13 @@ def test_glimmer_unavailable_goes_directly_to_one_spark_then_refers():
 
 def test_spark_failure_falls_back_to_tier1_referral_without_untrusted_claims():
     glimmer, _, sam = _providers()
-    spark = DeterministicMockDiagnosisProvider((_diagnosis(),), fail_calls=frozenset({0}))
+    spark = DeterministicMockDiagnosisProvider((_diagnosis(),), timeout_calls=frozenset({0, 1, 2}))
     result, _, _, store = _run(
         providers=(glimmer, spark, sam),
         override=_override(s2=0.0, s4=0.0, word="not sure"),
     )
     assert result.action == "refer"
-    assert result.spark_escalations == spark.generate_calls == 1
+    assert result.spark_escalations == 1 and spark.generate_calls == 3
     assert "cannot tell" in result.reply
     assert store.get_signals(result.case_id)["decision"] == "refer"
 
@@ -195,20 +195,27 @@ def test_sam_failure_or_empty_mask_has_no_severity_overlay_and_explains_unavaila
     assert "SAM overlay and severity are unavailable" in result.reply
 
 
-def test_repeated_image_and_language_uses_cache_without_provider_calls_but_traces_both_runs():
-    store, cache = TraceStore(":memory:"), MockWorkflowCache()
+def test_repeated_image_and_language_uses_sqlite_cache_without_provider_calls_but_traces_both_runs(tmp_path):
+    database = tmp_path / "workflow-cache.sqlite"
+    store = TraceStore(database)
     providers = _providers()
-    first, _, _, _ = _run(override=_override(), store=store, cache=cache, providers=providers)
+    first, _, _, _ = _run(override=_override(), store=store, providers=providers)
     counts = tuple(provider.generate_calls for provider in providers)
-    second, _, _, _ = _run(override=_override(), store=store, cache=cache, providers=providers)
+    store.close()
+    reopened = TraceStore(database)
+    second, _, _, _ = _run(override=_override(), store=reopened, providers=providers)
     assert first.action == second.action == "answer"
     assert second.cache_hit is True and first.case_id != second.case_id
-    assert second.overlay_bytes == first.overlay_bytes
+    assert first.overlay_bytes is not None and second.overlay_bytes is None
     assert second.severity_pct == first.severity_pct and second.severity_band == first.severity_band
+    assert "overlay image is not stored" in second.reply
     assert tuple(provider.generate_calls for provider in providers) == counts
-    assert store.get_case(first.case_id) is not None and store.get_case(second.case_id) is not None
-    assert store.get_signals(second.case_id)["decision"] == "answer"
-    assert "cache_lookup" in {step["step_name"] for step in store.get_steps(second.case_id)}
+    assert reopened.get_case(first.case_id) is not None and reopened.get_case(second.case_id) is not None
+    assert reopened.get_signals(second.case_id)["decision"] == "answer"
+    assert "cache_lookup" in {step["step_name"] for step in reopened.get_steps(second.case_id)}
+    row = reopened._connection.execute('SELECT response_json FROM cache').fetchone()[0]
+    assert "SYNTHETIC / MOCK" in row and _photo().hex() not in row
+    assert "Synthetic placeholder symptom" not in row
 
 
 def test_local_pipeline_and_mocks_cannot_open_network_sockets(monkeypatch):
@@ -281,7 +288,7 @@ def test_production_provider_and_malformed_test_override_are_rejected():
         run_synthetic_mock_workflow(
             _photo(), "en", glimmer_provider=object(), spark_provider=providers[1],
             sam_provider=providers[2], trace_store=TraceStore(":memory:"),
-            cache=MockWorkflowCache(), data_policy_value="public_test", evidence=EVIDENCE,
+            data_policy_value="public_test", evidence=EVIDENCE,
         )
     with pytest.raises(WorkflowPipelineError, match="signal value"):
         _run(override=TestOnlySignalOverride(s3=1.5))

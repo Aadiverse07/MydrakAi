@@ -3,14 +3,29 @@
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from hashlib import sha256
+import json
+import re
 import time
+from datetime import datetime, timedelta, timezone
 
-from mydrak.decider.extraction import SignalMeasurement, SignalSet, unavailable
+from mydrak.decider.extraction import SignalMeasurement, SignalSet
 from mydrak.reply.composer import CONFIDENCE_WORDS, compose_reply
-from mydrak.sam.overlay import T08Result
-from mydrak.trace.store import TraceCase, TraceStep, TraceStore
+from mydrak.sam.output import SamLimits, SamSegmentation, parse_sam_output
+from mydrak.sam.overlay import T08Result, decode_synthetic_grid, render_synthetic_fixture
+from mydrak.trace.store import (
+    TraceCase, TraceStep, TraceStore, WORKFLOW_CACHE_PROVENANCE,
+    WORKFLOW_CACHE_SCHEMA,
+)
 from mydrak.util.config import load_yaml
-from mydrak.workflow.mock_providers import SYNTHETIC_MOCK_LABEL
+from mydrak.workflow.mock_providers import (
+    DeterministicMockDiagnosisProvider, DeterministicMockSamProvider,
+    MockSamResponse, SYNTHETIC_MOCK_LABEL,
+)
+from mydrak.vision.diagnosis import (
+    DiagnosisOutput, DiagnosisProvider, DiagnosisResult, DiagnosisStatus,
+    run_diagnosis_validation,
+)
+from mydrak.vision.preprocessing import PreprocessedImage
 
 
 @dataclass(frozen=True)
@@ -39,34 +54,6 @@ class OfflineWorkflowResult:
     provenance: str = SYNTHETIC_MOCK_LABEL
     cache_hit: bool = False
     spark_escalations: int = 0
-
-
-@dataclass(frozen=True)
-class WorkflowSnapshot:
-    action: str
-    reply: str | None
-    reason: str
-    severity_pct: float | None
-    severity_band: str | None
-    overlay_bytes: bytes | None
-    overlay_mime_type: str | None
-    signals: tuple[float | None, float | None, float | None, float | None, float | None]
-    escalated: bool
-    kb_card_id: str | None
-    spark_escalations: int
-
-
-class MockWorkflowCache:
-    """Process-local result cache for the synthetic workflow; never persistent."""
-
-    def __init__(self) -> None:
-        self._entries: dict[str, WorkflowSnapshot] = {}
-
-    def get(self, key: str) -> WorkflowSnapshot | None:
-        return self._entries.get(key)
-
-    def put(self, key: str, value: WorkflowSnapshot) -> None:
-        self._entries.setdefault(key, value)
 
 
 def validate_signal_override(override: TestOnlySignalOverride | None) -> None:
@@ -136,37 +123,119 @@ def record_workflow_trace(store: TraceStore, result: OfflineWorkflowResult,
     )
 
 
-def make_snapshot(result: OfflineWorkflowResult, signals: SignalSet,
-                  escalated: bool, kb_id: str | None,
-                  score: float | None) -> WorkflowSnapshot:
-    return WorkflowSnapshot(
-        result.action, result.reply, result.reason, result.severity_pct,
-        result.severity_band, result.overlay_bytes, result.overlay_mime_type,
-        (_value(signals.s1), _value(signals.s2), _value(signals.s3), _value(signals.s4), score),
-        escalated, kb_id, result.spark_escalations,
+def cache_key(image_hash: str, language: str, voice_hint: str | None = None) -> str:
+    """Hash the preprocessed image digest, language, and optional voice hint."""
+    if not isinstance(image_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", image_hash):
+        raise ValueError("preprocessed image hash is invalid")
+    if language not in {"en", "hi"}:
+        raise ValueError("cache language is unsupported")
+    if voice_hint is not None and (
+        not isinstance(voice_hint, str) or len(voice_hint) > 1024
+        or any(ord(char) < 32 and char not in "\t\n" for char in voice_hint)
+    ):
+        raise ValueError("voice hint is invalid")
+    material = json.dumps([image_hash, language, voice_hint], ensure_ascii=False, separators=(",", ":"))
+    return sha256(material.encode("utf-8")).hexdigest()
+
+
+def workflow_cache_payload(result: OfflineWorkflowResult) -> dict[str, object]:
+    """Keep only bounded synthetic reply metadata; never cache source/overlay bytes."""
+    return {
+        "schema": WORKFLOW_CACHE_SCHEMA,
+        "provenance": WORKFLOW_CACHE_PROVENANCE,
+        "action": result.action,
+        "reason": result.reason,
+        "reply": result.reply,
+        "severity_pct": result.severity_pct,
+        "severity_band": result.severity_band,
+    }
+
+
+def run_diagnosis_with_retries(
+    provider: DiagnosisProvider,
+    *,
+    supported_crops,
+    disease_ids,
+    sleeper=None,
+) -> tuple[DiagnosisResult, int]:
+    """Apply B11's two-retry maximum; B8's single repair remains separate."""
+    retries = 0
+    while True:
+        result = run_diagnosis_validation(
+            provider, supported_crops=supported_crops, disease_ids=disease_ids,
+        )
+        if result.status is not DiagnosisStatus.UNAVAILABLE or result.reason not in {
+            "provider_failure", "repair_provider_failure", "provider_unavailable",
+        } or retries >= 2:
+            return result, retries
+        # B11 does not specify timing; this is a small project-local exponential delay.
+        (sleeper or time.sleep)(0.01 * (2 ** retries))
+        retries += 1
+
+
+def run_mock_sam(provider: DeterministicMockSamProvider,
+                 image: PreprocessedImage) -> tuple[T08Result, str]:
+    """Parse only the local synthetic mask grammar; failures carry no result."""
+    try:
+        response = provider.generate(image)
+        if not isinstance(response, MockSamResponse) or response.provenance != SYNTHETIC_MOCK_LABEL:
+            raise ValueError
+        segmentation: SamSegmentation = parse_sam_output(response.payload)
+        masks = {item.id: item.mask for item in segmentation.objects}
+        for role in ("leaf", "lesion"):
+            decode_synthetic_grid(masks[role], SamLimits())
+        result = render_synthetic_fixture(
+            segmentation, image, leaf_object_id="leaf", lesion_object_id="lesion",
+        )
+        reason = "" if result.severity_pct is not None else result.reason_code
+        return result, reason
+    except (ValueError, TypeError, RuntimeError, KeyError, OSError):
+        result = T08Result(None, None, None, None, "sam_provider_failed", "synthetic-fixture", None)
+        return result, "sam_provider_failed"
+
+
+def validate_pipeline_dependencies(language, store, glimmer, spark, sam, override,
+                                   user_hash, voice_hint) -> None:
+    if type(store) is not TraceStore:
+        raise ValueError("offline trace store is required")
+    if type(glimmer) is not DeterministicMockDiagnosisProvider or type(spark) is not DeterministicMockDiagnosisProvider:
+        raise ValueError("only deterministic mock diagnosis providers are accepted")
+    if type(sam) is not DeterministicMockSamProvider or sam.provenance != SYNTHETIC_MOCK_LABEL:
+        raise ValueError("only the deterministic mock SAM provider is accepted")
+    if not isinstance(language, str) or language not in {"en", "hi"}:
+        raise ValueError("language is unsupported")
+    if user_hash is not None and not re.fullmatch(r"[0-9a-f]{64}", user_hash if isinstance(user_hash, str) else ""):
+        raise ValueError("user identity must be a SHA-256 digest")
+    if voice_hint is not None and (
+        not isinstance(voice_hint, str) or len(voice_hint) > 1024
+        or any(ord(char) < 32 and char not in "\t\n" for char in voice_hint)
+    ):
+        raise ValueError("voice hint is invalid")
+    validate_signal_override(override)
+
+
+def reply_for_action(action, safety, card, confidence, severity, *, question_id=None,
+                     overlay_reason="") -> str:
+    return render_workflow_reply(
+        action, safety, card, confidence, severity,
+        question_id=question_id, overlay_reason=overlay_reason,
     )
 
 
-def signal_set_from_values(values: tuple[float | None, ...]) -> SignalSet:
-    return SignalSet(*[
-        SignalMeasurement(value, "cached_synthetic") if value is not None else unavailable("cached_unavailable")
-        for value in values[:4]
-    ])
+def is_valid_diagnosis(result: DiagnosisResult) -> bool:
+    return result.status is DiagnosisStatus.VALID and isinstance(result.output, DiagnosisOutput)
 
 
-def cached_overlay(snapshot: WorkflowSnapshot) -> T08Result | None:
-    if snapshot.overlay_bytes is None:
-        return None
-    return T08Result(snapshot.severity_pct, snapshot.severity_band, snapshot.overlay_bytes,
-                     snapshot.overlay_mime_type, "cached", "synthetic-fixture", "SYNTHETIC FIXTURE")
+def diagnosis_labels(output: DiagnosisOutput) -> dict[str, str]:
+    return {"crop": output.crop, "disease": output.issue}
 
 
-def cache_key(image_hash: str, language: str, policy: str | None,
-              override: TestOnlySignalOverride | None, user_hash: str | None = None) -> str:
-    fields = [image_hash, language, policy or "unknown", user_hash or "anonymous"]
-    if override is not None:
-        fields.extend(str(getattr(override, name)) for name in ("s2", "s3", "s4", "confidence_word"))
-    return sha256("|".join(fields).encode("utf-8")).hexdigest()
+def unsupported_plant_reply(safety: Mapping[str, object]) -> str:
+    return (
+        f"{SYNTHETIC_MOCK_LABEL} — preliminary guidance.\nConfidence: cannot tell.\n"
+        "This photo could not be confirmed as a supported plant. No diagnosis was made.\n"
+        f"Safety: {safety['safety_line']}"
+    )
 
 
 def load_router_config(path) -> tuple[Mapping[str, object], Mapping[str, object]]:
@@ -175,7 +244,10 @@ def load_router_config(path) -> tuple[Mapping[str, object], Mapping[str, object]
 
 
 def make_step(name: str, outcome: str, started: float) -> TraceStep:
-    return TraceStep(name, outcome, max(0.0, (time.perf_counter() - started) * 1000))
+    ended = time.perf_counter()
+    elapsed = max(0.0, ended - started)
+    timestamp = (datetime.now(timezone.utc) - timedelta(seconds=elapsed)).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    return TraceStep(name, outcome, elapsed * 1000, started_at=timestamp)
 
 
 def _value(measurement: SignalMeasurement) -> float | None:

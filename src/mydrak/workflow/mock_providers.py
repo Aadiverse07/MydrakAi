@@ -25,6 +25,7 @@ class DeterministicMockDiagnosisProvider:
     outputs: Sequence[object]
     repair_output: object | None = None
     fail_calls: frozenset[int] = frozenset()
+    timeout_calls: frozenset[int] = frozenset()
     provenance: str = field(default=SYNTHETIC_MOCK_LABEL, init=False)
     generate_calls: int = field(default=0, init=False)
     repair_calls: int = field(default=0, init=False)
@@ -39,6 +40,8 @@ class DeterministicMockDiagnosisProvider:
     def generate(self) -> object:
         index = self.generate_calls
         self.generate_calls += 1
+        if index in self.timeout_calls:
+            raise TimeoutError("synthetic mock provider timeout")
         if index in self.fail_calls:
             raise RuntimeError("synthetic mock provider unavailable")
         if index >= len(self.outputs):
@@ -100,3 +103,18 @@ class DeterministicMockSamProvider:
                 "data": "\n".join(rows),
             },
         }
+
+
+@dataclass
+class DeterministicMockTranscriber:
+    """Failure-injection-only transcription boundary; never reads audio bytes."""
+
+    fail: bool = True
+    provenance: str = field(default=SYNTHETIC_MOCK_LABEL, init=False)
+    calls: int = field(default=0, init=False)
+
+    def transcribe(self) -> str:
+        self.calls += 1
+        if self.fail:
+            raise RuntimeError("synthetic mock transcription failure")
+        return "SYNTHETIC_TRANSCRIPT"

@@ -33,6 +33,22 @@ TEMPLATES = {
 # contain caller/model text and are not used for treatment guidance.
 OFFLINE_DEMO_RESPONSES = {
     "en": {
+        "synthetic_answer": (
+            "SYNTHETIC / MOCK — preliminary guidance only. This cached fixture "
+            "demonstrates an answer route; it is not a diagnosis and contains no treatment advice."
+        ),
+        "synthetic_ask": (
+            "SYNTHETIC / MOCK — preliminary guidance only. This cached fixture "
+            "demonstrates an ask route: is this synthetic example photo clear?"
+        ),
+        "synthetic_referral": (
+            "SYNTHETIC / MOCK — preliminary guidance only. I cannot tell from this "
+            "fixture; please show a local agriculture expert."
+        ),
+        "synthetic_retake": (
+            "SYNTHETIC / MOCK — preliminary guidance only. This cached fixture "
+            "demonstrates a retake route; no diagnosis was made."
+        ),
         "safe_referral": (
             "Offline replay — synthetic demo only: I cannot tell from this photo. "
             "If unsure, contact the Kisan Call Centre or your local KVK."

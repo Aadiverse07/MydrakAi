@@ -1,5 +1,13 @@
 # Daily log
 
+## 2026-10-30 — Phase 8 T09 trace, T15 replay, T18 failure injection (Codex)
+
+- What changed: extended the existing SQLite trace store with the B9 `eval_runs` table and migration for `steps.started_at`; new step rows receive UTC timestamps while old rows are not backfilled with invented times. Unknown token and price data remains NULL. Replaced the workflow's process-local result cache with the existing SQLite `cache` table, keyed by normalized image digest, language, and optional voice hint; only bounded reply metadata is cached, with explicit `SYNTHETIC / MOCK` provenance and no image/overlay bytes.
+- Replay: registered synthetic answer, ask, refer, and retake scenarios; the bot replay command serves them from validated persistent cache. Socket-blocked tests exercise each fixture and verify no provider fallback.
+- Failure injection: added bounded two-retry mock provider handling, one-repair invalid-output fallback, SAM empty/failure handling, unsupported-plant fallback, mock transcription failure, and mock Telegram-send retry/failure traces. T09, T15, and T18 remain **PARTIAL** because provider measurements/prices, the full D3 demo inventory, and real Telegram/provider runtime behavior are not implemented or verified.
+- Safety: cache and trace contents omit raw image bytes, user content, voice hints, and credentials. All external boundaries remain deterministic mocks; no real clients or network paths were added. Live SAM remains **NO-GO**.
+- Verification: focused Phase 8 tests **137 passed**; full suite **1032 passed**; `python3 -m compileall -q src tests eval`, TOML plus six project YAML parses, and `git diff --check` passed. Safe secret-pattern scan found **0 matches** across 17 changed/new files. Git metadata confirms `.env` is ignored and untracked (`git ls-files -- .env` returned no path); contents were not read. Exact checks are recorded in `docs/muse-code-log/p8-trace-replay-failures-codex.md`.
+
 ## 2026-10-30 — Phase 7 offline mock workflow (Codex)
 
 - What changed: added one `run_synthetic_mock_workflow(photo_bytes, language, ...)` entry point. It runs bounded in-memory image intake/policy validation and preprocessing, process-local hash/language cache lookup, two B8-validated synthetic Glimmer samples, S1/S2 extraction and the existing Decider, at most one mock Spark escalation, synthetic SAM fixture parsing/grid decoding/T08 severity and overlay, the explicit test-only `SYNTHETIC_TEST` KB card path, English reply composition, and a SQLite case/steps/signals trace. Image-byte parsing/preprocessing helpers now accept bytes without temporary files.

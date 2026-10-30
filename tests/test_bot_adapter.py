@@ -138,7 +138,8 @@ def test_start_language_help_rescan_and_voice_have_explicit_outcomes():
     assert rescan.reason == "scan_store_unavailable"
     voice = adapter.handle_update(update(kind="voice", text=None))
     assert voice.status == "deferred"
-    assert voice.reason == "audio_pipeline_unavailable"
+    assert voice.reason == "transcription_failed"
+    assert "resend the voice note or type a short note" in voice.reply
 
 
 def test_followup_text_is_not_interpreted_or_echoed_and_routes_to_manual_review():
