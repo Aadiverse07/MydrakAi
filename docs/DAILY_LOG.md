@@ -1,5 +1,13 @@
 # Daily log
 
+## 2026-10-30 — T08 offline synthetic mask severity and overlay (Codex)
+
+- What changed: added a fixture-only decoder from parser `SamMask` values tagged `synthetic-grid-v1` to boolean grids. The renderer requires explicit leaf/lesion object IDs, reuses `mask_severity_pct()` and configured `band()` thresholds, and renders a semi-transparent lesion fill plus outline onto the preprocessed image. Successful overlays are PNG bytes in memory with a visible `SYNTHETIC FIXTURE` watermark. Pillow was already declared for T04; `pyproject.toml` now records its T08 overlay use without adding a dependency.
+- Failure behavior: missing, malformed, empty, or dimension-inconsistent masks return a stable reason code with no severity and no overlay. Empty leaf and empty lesion masks remain unavailable. Severity bands in `config/severity.yaml` are configurable heuristics, not validated agronomic thresholds.
+- Limits: only the JSON parser's project-local synthetic grid grammar is decoded. Response-text/Base85 payloads stay opaque; object IDs are caller-selected roles, not inferred labels. T08 remains PARTIAL; no provider mask decoder, live compatibility, or live SAM call is implemented. The roadmap records this and keeps live SAM NO-GO.
+- Verification: focused overlay/severity/grid tests **57 passed**; full suite **997 passed**. Compile/config/security/metadata/whitespace results are recorded in `docs/muse-code-log/t08-overlay-codex.md`.
+- No network, API calls, uploads, credentials, `.env` reads, new dependency installation, or live model calls.
+
 ## 2026-10-30 — T06 restore registry title/year gates (Codex)
 
 - What changed: restored `title_verified` and `edition_year` to the source registry contract. All eight candidates have `title_verified: false` and `edition_year: null`; citations require a retrieved, title-verified source, and the PAU candidate remains uncitable until its edition year is recorded. Registry notes and the T06 content plan reflect the restored gates. Tests again exercise title-verification and PAU edition-year citation rejection; other registry coverage, including non-citable `gap` and `cross-check`, remains.

@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "pyyaml>=6",
-  "Pillow>=10", # T04 offline PNG/JPEG decode, EXIF orientation, resize, and measurements.
+  "Pillow>=10", # T04 local image preprocessing; T08 in-memory synthetic overlay rendering.
 ]
 
 [project.optional-dependencies]
