@@ -1,5 +1,11 @@
 # Daily log
 
+## 2026-10-30 — T06 validator regression follow-up (Codex)
+
+- Compared `git diff e087e23 ef1aa7b -- tests/`. The title-verification and PAU edition-year test cases tracked fields removed by the later registry-contract correction. Current `SOURCE_FIELDS` intentionally excludes both; strict unknown-field validation rejects them. Added explicit tests for those retired fields rather than restoring obsolete citation semantics. The dropped `gap` citation case was restored in the existing branch state: `gap` is a valid tier, remains non-citable like `cross-check`, and JNKVV/RVSKVV has the no-package-found note. Other diff changes updated synthetic source IDs, strengthened the synthetic-card marker check, and added a retrieved-flag type check; no validator coverage was lost there.
+- Verification: disease-card schema tests **60 passed**; full suite **984 passed**; compileall and YAML parsing passed; secret scan found 0 matches; `.env` metadata checks confirmed ignored/untracked; `git diff --check` clean. See `docs/muse-code-log/t06-test-regression-and-gap-audit-codex.md`.
+- No source registry or validator changes were necessary because the requested `gap` behavior is already present in the current branch. No live services, credentials, `.env` reads, or Git history operations occurred during review.
+
 ## 2026-10-30 — T04 offline image preprocessing measurements (Codex)
 
 - What changed: after the user confirmed Pillow imports, added bounded Pillow decoding for local PNG/JPEG inputs, EXIF transpose, an explicitly UNVERIFIED long-edge cap, project-local JPEG normalization, and a SHA-256 hash of normalized bytes. Added measurement-only Laplacian variance, mean grayscale brightness, and a clearly UNVERIFIED green-hue pixel proxy for leaf coverage. Measurements can be stored in a dedicated trace table and are not mapped to S3, quality scores, or routing. Retake routing remains disabled. Pillow is approved for T04 only.

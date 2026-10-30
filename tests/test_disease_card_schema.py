@@ -267,6 +267,14 @@ def test_registry_integrity_unique_ids_enums_and_exact_fields():
     assert set(entries[0]) == SOURCE_FIELDS
 
 
+@pytest.mark.parametrize("retired_field", ["title_verified", "edition_year"])
+def test_registry_rejects_fields_removed_from_current_contract(retired_field):
+    entries = project_registry()
+    entries[0][retired_field] = False if retired_field == "title_verified" else 2020
+    with pytest.raises(ValueError, match="unknown fields"):
+        validate_source_registry(entries)
+
+
 def test_gap_is_a_valid_registry_tier():
     entries = project_registry()
     entries[6]["tier"] = "gap"
