@@ -107,6 +107,21 @@ def _parse_sof(data: bytes, pos: int, seg_length: int) -> tuple[str, int, int]:
     return "jpeg", width, height
 
 
+def describe_image_bytes(data: bytes) -> IntakeImage:
+    """Validate bounded PNG/JPEG header bytes without writing them to disk."""
+    if not isinstance(data, bytes):
+        raise IntakeError("image input must be bytes")
+    if not 1 <= len(data) <= MAX_IMAGE_BYTES:
+        raise IntakeError("image bytes are empty or exceed the local size cap")
+    if data.startswith(PNG_SIGNATURE):
+        fmt, width, height = _png_dimensions(data)
+    elif data.startswith(JPEG_SOI):
+        fmt, width, height = _jpeg_dimensions(data)
+    else:
+        raise IntakeError("unsupported image format (expected PNG or JPEG bytes)")
+    return IntakeImage(format=fmt, width=width, height=height, size_bytes=len(data))
+
+
 def read_local_image(path: str | os.PathLike[str]) -> IntakeImage:
     """Read a local PNG/JPEG header into an IntakeImage descriptor."""
     _, descriptor = read_local_image_data(path)
@@ -133,11 +148,4 @@ def read_local_image_data(path: str | os.PathLike[str]) -> tuple[bytes, IntakeIm
         raise IntakeError("image file could not be read") from None
     if len(data) > MAX_IMAGE_BYTES:
         raise IntakeError("image file exceeds the size cap")
-    if data.startswith(PNG_SIGNATURE):
-        fmt, width, height = _png_dimensions(data)
-    elif data.startswith(JPEG_SOI):
-        fmt, width, height = _jpeg_dimensions(data)
-    else:
-        raise IntakeError("unsupported image format (expected PNG or JPEG bytes)")
-    descriptor = IntakeImage(format=fmt, width=width, height=height, size_bytes=len(data))
-    return data, descriptor
+    return data, describe_image_bytes(data)

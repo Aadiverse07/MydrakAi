@@ -1,5 +1,13 @@
 # Daily log
 
+## 2026-10-30 — Phase 7 offline mock workflow (Codex)
+
+- What changed: added one `run_synthetic_mock_workflow(photo_bytes, language, ...)` entry point. It runs bounded in-memory image intake/policy validation and preprocessing, process-local hash/language cache lookup, two B8-validated synthetic Glimmer samples, S1/S2 extraction and the existing Decider, at most one mock Spark escalation, synthetic SAM fixture parsing/grid decoding/T08 severity and overlay, the explicit test-only `SYNTHETIC_TEST` KB card path, English reply composition, and a SQLite case/steps/signals trace. Image-byte parsing/preprocessing helpers now accept bytes without temporary files.
+- Safety: the function accepts only deterministic mock provider classes. S3/S4 remain unavailable without an explicit `TestOnlySignalOverride`, so ordinary routing refers; the override is code-only and absent from configuration. Threshold/weight placeholders are read as-is only by this synthetic path. The process-local cache contains normalized result output, not source photo bytes. Traces store digests and fixed metadata only. Replies include `SYNTHETIC / MOCK`, preliminary-guidance wording, confidence vocabulary and safety line. Hindi remains unavailable/unreviewed. Empty/failed SAM masks yield no severity or overlay and the reply states that limitation. Retake is terminal; invalid image/policy failures stop safely.
+- Limits: no live Glimmer, Spark, SAM, Telegram, or provider client exists. SAM accepts only `synthetic-grid-v1`; no Base85/provider decoding or compatibility is claimed. The cache is process-local, not the persistent B9/T15 cache. Production disease cards and reviewed Hindi content remain absent. T03, T05, T07, T08, T09, T11 and T12 remain PARTIAL; live SAM stays NO-GO.
+- Verification: focused workflow/image/SAM/reply/trace suite **149 passed**; full suite **1013 passed**. Additional syntax/config/security/metadata/whitespace results are in `docs/muse-code-log/p7-offline-workflow-codex.md`.
+- No network, API calls, uploads, credentials, `.env` reads, dependency installation, or live model calls.
+
 ## 2026-10-30 — T08 offline synthetic mask severity and overlay (Codex)
 
 - What changed: added a fixture-only decoder from parser `SamMask` values tagged `synthetic-grid-v1` to boolean grids. The renderer requires explicit leaf/lesion object IDs, reuses `mask_severity_pct()` and configured `band()` thresholds, and renders a semi-transparent lesion fill plus outline onto the preprocessed image. Successful overlays are PNG bytes in memory with a visible `SYNTHETIC FIXTURE` watermark. Pillow was already declared for T04; `pyproject.toml` now records its T08 overlay use without adding a dependency.

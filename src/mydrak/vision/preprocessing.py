@@ -11,10 +11,10 @@ import warnings
 
 from PIL import Image, ImageOps, ImageStat
 
-from mydrak.intake.adapter import IntakeError, MAX_DIMENSION
+from mydrak.intake.adapter import IntakeError, IntakeImage, MAX_DIMENSION
 from mydrak.trace.store import TraceError, TraceStore
 from mydrak.util.config import load_yaml
-from mydrak.vision.source import read_local_image_data
+from mydrak.vision.source import describe_image_bytes, read_local_image_data
 
 _CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "image_preprocessing.yaml"
 _CONFIG_KEYS = {
@@ -146,29 +146,29 @@ def _measure(image: Image.Image, config: ImagePreprocessingConfig) -> ImageMeasu
     )
 
 
-def preprocess_local_image(
-    path: str | Path,
-    *,
-    config: ImagePreprocessingConfig | None = None,
-    config_path: str | Path | None = None,
-    trace_store: TraceStore | None = None,
-    trace_case_id: str | None = None,
-) -> PreprocessedImage:
-    """Decode, orient, cap, measure, and JPEG-encode one local image.
-
-    Measurements are observations only. This function does not calculate S3,
-    make a retake decision, or alter any Decider signal. If a trace store is
-    supplied, ``trace_case_id`` must identify an already-recorded case.
-    """
+def _settings(
+    config: ImagePreprocessingConfig | None,
+    config_path: str | Path | None,
+) -> ImagePreprocessingConfig:
     if config is not None and config_path is not None:
         raise IntakeError("provide either config or config_path")
     settings = config or load_image_preprocessing_config(config_path)
     if not isinstance(settings, ImagePreprocessingConfig):
         raise IntakeError("image preprocessing settings are invalid")
     _validate_settings(settings)
+    return settings
+
+
+def _preprocess_data(
+    raw: bytes,
+    descriptor: IntakeImage,
+    settings: ImagePreprocessingConfig,
+    *,
+    trace_store: TraceStore | None,
+    trace_case_id: str | None,
+) -> PreprocessedImage:
     if (trace_store is None) != (trace_case_id is None):
         raise IntakeError("trace store and existing case ID must be provided together")
-    raw, descriptor = read_local_image_data(path)
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -227,4 +227,41 @@ def preprocess_local_image(
         height=rgb.height,
         measurements=measurements,
         retake_enabled=settings.retake_enabled,
+    )
+
+
+def preprocess_image_bytes(
+    image_bytes: bytes,
+    *,
+    config: ImagePreprocessingConfig | None = None,
+    config_path: str | Path | None = None,
+    trace_store: TraceStore | None = None,
+    trace_case_id: str | None = None,
+) -> PreprocessedImage:
+    """Preprocess bounded PNG/JPEG bytes in memory, without a temporary file.
+
+    Measurements are observations only and never calculate S3 or route cases.
+    """
+    settings = _settings(config, config_path)
+    descriptor = describe_image_bytes(image_bytes)
+    return _preprocess_data(
+        image_bytes, descriptor, settings,
+        trace_store=trace_store, trace_case_id=trace_case_id,
+    )
+
+
+def preprocess_local_image(
+    path: str | Path,
+    *,
+    config: ImagePreprocessingConfig | None = None,
+    config_path: str | Path | None = None,
+    trace_store: TraceStore | None = None,
+    trace_case_id: str | None = None,
+) -> PreprocessedImage:
+    """Decode, orient, cap, measure, and JPEG-encode one local image."""
+    settings = _settings(config, config_path)
+    raw, descriptor = read_local_image_data(path)
+    return _preprocess_data(
+        raw, descriptor, settings,
+        trace_store=trace_store, trace_case_id=trace_case_id,
     )
