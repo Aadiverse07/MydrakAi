@@ -33,7 +33,7 @@ def eligible_test_registry() -> list[dict]:
     """Synthetic validator setup; these flags are not repository evidence."""
     entries = project_registry()
     entry = copy.deepcopy(entries[1])
-    entry.update(retrieved=True, title_verified=True, verified_by_user=True)
+    entry.update(retrieved=True, verified_by_user=True)
     return [entry]
 
 
@@ -51,6 +51,10 @@ def test_test_only_fixture_validates_only_through_explicit_synthetic_path():
         validate_disease_card(card)
     with pytest.raises(ValueError, match="not loadable"):
         load_disease_card(SYNTHETIC_FIXTURE)
+    unmarked_copy = copy.deepcopy(card)
+    unmarked_copy.pop("test_only")
+    with pytest.raises(ValueError, match="SYNTHETIC_TEST card"):
+        validate_disease_card(unmarked_copy, registry=eligible_test_registry())
 
 
 def test_production_yaml_loader_accepts_valid_registry_backed_card(tmp_path):
@@ -135,15 +139,15 @@ def test_follow_up_question_ids_must_be_unique():
 
 @pytest.mark.parametrize("option", [
     "not a mapping", {},
-    {"text": "Synthetic option", "source": "soybean_extension_unresolved"},
-    {"text": "Synthetic option", "source": "soybean_extension_unresolved", "label_instruction": ""},
+    {"text": "Synthetic option", "source": "icar_iisr_soybean_bulletin_17"},
+    {"text": "Synthetic option", "source": "icar_iisr_soybean_bulletin_17", "label_instruction": ""},
 ])
 def test_malformed_chemical_option_rejected(option):
     card = production_test_card()
     card["chemical_options"] = [option]
-    card["sources"] = ["soybean_extension_unresolved"]
+    card["sources"] = ["icar_iisr_soybean_bulletin_17"]
     card["claim_sources"].append({
-        "claim": "chemical_options[0].text", "source_id": "soybean_extension_unresolved",
+        "claim": "chemical_options[0].text", "source_id": "icar_iisr_soybean_bulletin_17",
         "page": "test page", "section": "test section",
     })
     with pytest.raises(ValueError):
@@ -152,7 +156,7 @@ def test_malformed_chemical_option_rejected(option):
 
 def test_chemical_option_requires_registry_citation_and_label_instruction():
     card = production_test_card()
-    source_id = "soybean_extension_unresolved"
+    source_id = "icar_iisr_soybean_bulletin_17"
     card["chemical_options"] = [{
         "text": "Synthetic option placeholder",
         "source": source_id,
@@ -195,18 +199,16 @@ def test_unknown_claim_source_is_rejected():
         validate_disease_card(card, registry=eligible_test_registry())
 
 
-@pytest.mark.parametrize("field", ["retrieved", "title_verified"])
-def test_unretrieved_or_unverified_title_source_cannot_be_cited(field):
+def test_unretrieved_source_cannot_be_cited():
     registry = eligible_test_registry()
-    registry[0][field] = False
-    with pytest.raises(ValueError, match="not retrieved and title-verified"):
+    registry[0]["retrieved"] = False
+    with pytest.raises(ValueError, match="not retrieved"):
         validate_disease_card(production_test_card(), registry=registry)
 
 
-@pytest.mark.parametrize("tier", ["cross-check", "gap"])
-def test_cross_check_and_gap_sources_cannot_be_cited(tier):
+def test_cross_check_sources_cannot_be_cited():
     registry = eligible_test_registry()
-    registry[0]["tier"] = tier
+    registry[0]["tier"] = "cross-check"
     with pytest.raises(ValueError, match="not citable"):
         validate_disease_card(production_test_card(), registry=registry)
 
@@ -254,6 +256,10 @@ def test_registry_integrity_unique_ids_enums_and_exact_fields():
         with pytest.raises(ValueError):
             validate_source_registry(malformed)
     malformed = copy.deepcopy(entries)
+    malformed[0]["retrieved"] = "false"
+    with pytest.raises(ValueError, match="must be boolean"):
+        validate_source_registry(malformed)
+    malformed = copy.deepcopy(entries)
     malformed[0]["unrequested_fact"] = "no"
     with pytest.raises(ValueError, match="unknown fields"):
         validate_source_registry(malformed)
@@ -264,30 +270,30 @@ def test_seeded_registry_keeps_all_candidate_sources_unverified():
     entries = load_source_registry()
     assert len(entries) == 8
     assert all(
-        not item["retrieved"] and not item["title_verified"] and not item["verified_by_user"]
+        not item["retrieved"] and not item["verified_by_user"]
         for item in entries.values()
     )
-    assert entries["pau_package_practices"]["edition_year"] is None
+    expected_titles = {
+        "icar_cpri_gap_bulletin_108": "ICAR-CPRI GAP Bulletin 108",
+        "icar_iisr_soybean_bulletin_17": "ICAR-IISR Soybean Extension Bulletin 17",
+        "pau_package_of_practices": "PAU Package of Practices",
+        "tnau_agritech_soybean": "TNAU Agritech Soybean",
+        "icar_crida_mp_advisories": "ICAR-CRIDA MP agro-advisories",
+        "wamis_mp_zone_advisories": "WAMIS MP zone advisories",
+        "jnkvv_rvskvv_package": "JNKVV/RVSKVV package",
+        "cpri_hindi_bulletin": "CPRI Hindi bulletin",
+    }
+    assert {key: entry["title"] for key, entry in entries.items()} == expected_titles
+    assert entries["pau_package_of_practices"]["region_tag"] == "Punjab"
+    assert entries["pau_package_of_practices"]["tier"] == "supplementary"
+    assert entries["tnau_agritech_soybean"]["region_tag"] == "Tamil Nadu"
+    assert entries["tnau_agritech_soybean"]["tier"] == "supplementary"
+    assert entries["icar_crida_mp_advisories"]["region_tag"] == "MP"
+    assert entries["icar_crida_mp_advisories"]["tier"] == "primary"
+    assert entries["wamis_mp_zone_advisories"]["region_tag"] == "MP"
+    assert entries["wamis_mp_zone_advisories"]["tier"] == "supplementary"
     assert entries["cpri_hindi_bulletin"]["tier"] == "cross-check"
-    cpri = entries["cpri_gap_2020"]
-    assert (cpri["title"], cpri["publisher"], cpri["edition_year"]) == (
-        "Good Agricultural Practices (GAP) for Production of Potato Crop",
-        "ICAR-CPRI Shimla",
-        2020,
-    )
-
-
-def test_pau_citation_requires_edition_year():
-    card = production_test_card()
-    registry = eligible_test_registry()
-    pau = copy.deepcopy(project_registry()[2])
-    pau.update(retrieved=True, title_verified=True, verified_by_user=True)
-    registry.append(pau)
-    for ref in card["claim_sources"]:
-        ref["source_id"] = "pau_package_practices"
-    card["sources"] = ["pau_package_practices"]
-    with pytest.raises(ValueError, match="edition_year"):
-        validate_disease_card(card, registry=registry)
+    assert "Source gap" in entries["jnkvv_rvskvv_package"]["notes"]
 
 
 def test_general_safety_card_loading_contract_is_unchanged():

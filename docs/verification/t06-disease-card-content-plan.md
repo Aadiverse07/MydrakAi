@@ -50,6 +50,10 @@ The S2 overlap helper exists, but do not use it as production matching until the
 
 ## Phase 4 T06 registry and schema work (2026-10-30)
 
+**Registry field/title snapshot superseded by the later 2026-10-30 follow-up
+below.** The following record is retained for history; current registry
+requirements are in the follow-up section.
+
 Project owner supplied a provisional scope: Madhya Pradesh first, with tomato,
 potato, and soybean proposed crops. The crops are **not confirmed**. The stated
 source posture is a national ICAR package plus an MP advisory overlay. Cards
@@ -80,3 +84,28 @@ was drafted. Required next evidence: project-owner confirmation of the three
 crops and per-crop card allocation; actual source documents/excerpts with page
 and section locators; confirmation of the CPRI and soybean titles; PAU edition
 year if used; and qualified English/agronomic and native-Hindi review evidence.
+
+## Revised registry request (2026-10-30)
+
+The latest owner request defines registry fields as `id`, `title`, `publisher`,
+`region_tag`, `tier`, `local_path`, `retrieved`, `verified_by_user`, and
+`notes`; it does not include `title_verified` or `edition_year`. The eight
+registry titles now exactly follow the supplied names. Every source remains
+unretrieved and unverified by the user. The user-proposed scope remains MP
+first with tomato, potato, and soybean **to be confirmed**; source posture is
+national ICAR package plus MP advisory overlay. No Hindi reviewer is confirmed
+and Hindi remains UNREVIEWED. The Codex-permission statement is user-stated;
+Official Rules evidence remains UNVERIFIED.
+
+The allowed tier enum has no `gap` value, although JNKVV/RVSKVV is supplied as
+a source gap. To preserve the enum and fail closed, its tier is `cross-check`
+solely as a non-citable placeholder, with source-gap status stated in `notes`;
+this is a project-local compatibility choice, not a claim that it is actually
+a cross-check publication. Registry citation requires `retrieved: true`;
+verified cards additionally require `verified_by_user: true`. CPRI Hindi and
+JNKVV/RVSKVV cannot be cited because they are tagged `cross-check`.
+
+No files exist under `docs/kb/source_excerpts/`; no production cards were
+drafted. Needed next: local excerpts with document/page/section references,
+owner confirmation of target crops, and actual retrieval/user verification for
+sources. Hindi remains unreviewed.

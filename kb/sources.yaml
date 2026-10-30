@@ -1,88 +1,72 @@
-- id: cpri_gap_2020
-  title: Good Agricultural Practices (GAP) for Production of Potato Crop
-  publisher: ICAR-CPRI Shimla
+- id: icar_cpri_gap_bulletin_108
+  title: ICAR-CPRI GAP Bulletin 108
+  publisher: ICAR-CPRI
   region_tag: national
   tier: primary
-  edition_year: 2020
   local_path: null
   retrieved: false
-  title_verified: false
   verified_by_user: false
-  notes: Details came from an outside research pass; not verified against the PDF.
-- id: soybean_extension_unresolved
-  title: ICAR-IISR (formerly NRC Soybean) soybean extension bulletin, number/title UNRESOLVED
-  publisher: ICAR-IISR (formerly NRC Soybean)
+  notes: Candidate title supplied by the project owner; not retrieved or verified.
+- id: icar_iisr_soybean_bulletin_17
+  title: ICAR-IISR Soybean Extension Bulletin 17
+  publisher: ICAR-IISR
   region_tag: national
   tier: primary
-  edition_year: null
   local_path: null
   retrieved: false
-  title_verified: false
   verified_by_user: false
-  notes: Bulletin number and title are unresolved.
-- id: pau_package_practices
+  notes: Candidate title supplied by the project owner; not retrieved or verified.
+- id: pau_package_of_practices
   title: PAU Package of Practices
   publisher: PAU
   region_tag: Punjab
   tier: supplementary
-  edition_year: null
   local_path: null
   retrieved: false
-  title_verified: false
   verified_by_user: false
-  notes: Edition year is required before citation.
+  notes: Candidate title supplied by the project owner; not retrieved or verified.
 - id: tnau_agritech_soybean
   title: TNAU Agritech Soybean
   publisher: TNAU
   region_tag: Tamil Nadu
   tier: supplementary
-  edition_year: null
   local_path: null
   retrieved: false
-  title_verified: false
   verified_by_user: false
-  notes: Candidate source; not retrieved or verified.
+  notes: Candidate title supplied by the project owner; not retrieved or verified.
 - id: icar_crida_mp_advisories
   title: ICAR-CRIDA MP agro-advisories
   publisher: ICAR-CRIDA
   region_tag: MP
   tier: primary
-  edition_year: null
   local_path: null
   retrieved: false
-  title_verified: false
   verified_by_user: false
-  notes: Regional framing only; not a full package.
+  notes: Candidate title supplied by the project owner; not retrieved or verified.
 - id: wamis_mp_zone_advisories
   title: WAMIS MP zone advisories
   publisher: WAMIS
   region_tag: MP
   tier: supplementary
-  edition_year: null
   local_path: null
   retrieved: false
-  title_verified: false
   verified_by_user: false
-  notes: Candidate source; not retrieved or verified.
+  notes: Candidate title supplied by the project owner; not retrieved or verified.
 - id: jnkvv_rvskvv_package
   title: JNKVV/RVSKVV package
   publisher: JNKVV/RVSKVV
   region_tag: MP
-  tier: gap
-  edition_year: null
+  tier: cross-check
   local_path: null
   retrieved: false
-  title_verified: false
   verified_by_user: false
-  notes: Gap entry; not retrieved.
+  notes: Source gap; not retrieved. Cross-check is the available non-citable tier under the declared enum.
 - id: cpri_hindi_bulletin
   title: CPRI Hindi bulletin
-  publisher: ICAR-CPRI
+  publisher: CPRI
   region_tag: national
   tier: cross-check
-  edition_year: null
   local_path: null
   retrieved: false
-  title_verified: false
   verified_by_user: false
-  notes: Cross-check only; never citable.
+  notes: Cross-check only; never cite.

@@ -49,3 +49,33 @@ allocation; source excerpts and verification for candidate titles; PAU edition
 if used; source retrieval/user confirmation; qualified content and native
 Hindi review. Schema checks do not establish agronomic validity or source
 truth. Live SAM remains **NO-GO**.
+
+## Owner-requested registry correction (2026-10-30)
+
+The owner supplied a revised registry field set and exact candidate names after
+the first T06 commit. The registry and validator now use only `id`, `title`,
+`publisher`, `region_tag`, `tier`, `local_path`, `retrieved`,
+`verified_by_user`, and `notes`; `title_verified` and `edition_year` were
+removed. All eight candidates remain `retrieved: false` and
+`verified_by_user: false`.
+
+The requested tier enum excludes `gap`, while JNKVV/RVSKVV is called a source
+gap. It is stored as `cross-check` only to enforce non-citability; its note and
+the content plan state this is an enum-compatibility placeholder, not a factual
+classification. `verified` cards require retrieved sources with
+`verified_by_user: true`; any `cross-check` source is rejected for citation.
+The Official Rules file retains its prior evidence report and records the
+Codex-permission statement as user-stated and UNVERIFIED.
+
+The source-excerpts folder is absent; no production card was authored. MP-first
+and the three crop names remain proposed, not confirmed. T06 remains PARTIAL.
+
+Correction-pass verification:
+
+- `python3 -m pytest tests/test_disease_card_schema.py -q`: **56 passed** (exit 0).
+- `python3 -m pytest -q`: **960 passed** (exit 0).
+- `python3 -m compileall -q src tests eval`: exit 0.
+- Safe YAML parsing of all `kb/**/*.yaml`: 2 files parsed, exit 0.
+- Safe secret-pattern scan over the nine scoped files: 0 matches, exit 0; emitted only counts and file/line locations.
+- `.env` metadata only: `git check-ignore -v .env` exit 0 (`.gitignore:2`); `git ls-files -- .env` exit 0 with no tracked path; `git status --short --ignored -- .env` exit 0 (`!! .env`). Contents were not read.
+- Untracked-file whitespace scan: 0 trailing whitespace; `git diff --check`: exit 0.

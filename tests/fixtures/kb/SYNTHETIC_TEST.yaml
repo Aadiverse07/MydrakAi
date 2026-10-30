@@ -20,46 +20,46 @@ low_risk_steps:
 chemical_options: []
 when_to_refer: Synthetic placeholder referral condition
 sources:
-  - soybean_extension_unresolved
+  - icar_iisr_soybean_bulletin_17
 reviewed_by: null
 status: draft
 region_tags:
   - MP
 claim_sources:
   - claim: names.en
-    source_id: soybean_extension_unresolved
+    source_id: icar_iisr_soybean_bulletin_17
     page: SYNTHETIC_TEST
     section: SYNTHETIC_TEST
   - claim: names.hi
-    source_id: soybean_extension_unresolved
+    source_id: icar_iisr_soybean_bulletin_17
     page: SYNTHETIC_TEST
     section: SYNTHETIC_TEST
   - claim: symptoms[0]
-    source_id: soybean_extension_unresolved
+    source_id: icar_iisr_soybean_bulletin_17
     page: SYNTHETIC_TEST
     section: SYNTHETIC_TEST
   - claim: confusable_with[0]
-    source_id: soybean_extension_unresolved
+    source_id: icar_iisr_soybean_bulletin_17
     page: SYNTHETIC_TEST
     section: SYNTHETIC_TEST
   - claim: follow_up_questions[0].en
-    source_id: soybean_extension_unresolved
+    source_id: icar_iisr_soybean_bulletin_17
     page: SYNTHETIC_TEST
     section: SYNTHETIC_TEST
   - claim: follow_up_questions[0].hi
-    source_id: soybean_extension_unresolved
+    source_id: icar_iisr_soybean_bulletin_17
     page: SYNTHETIC_TEST
     section: SYNTHETIC_TEST
   - claim: low_risk_steps.en[0]
-    source_id: soybean_extension_unresolved
+    source_id: icar_iisr_soybean_bulletin_17
     page: SYNTHETIC_TEST
     section: SYNTHETIC_TEST
   - claim: low_risk_steps.hi[0]
-    source_id: soybean_extension_unresolved
+    source_id: icar_iisr_soybean_bulletin_17
     page: SYNTHETIC_TEST
     section: SYNTHETIC_TEST
   - claim: when_to_refer
-    source_id: soybean_extension_unresolved
+    source_id: icar_iisr_soybean_bulletin_17
     page: SYNTHETIC_TEST
     section: SYNTHETIC_TEST
 review_status:

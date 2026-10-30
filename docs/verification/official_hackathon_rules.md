@@ -37,4 +37,4 @@ Secondary summaries were not used to establish rules. The full official rules do
 
 ## Project-owner statement (2026-10-30)
 
-The user stated that Codex is permitted by the Official Rules. This is **UNVERIFIED** until the official wording or a link is recorded and checked. The user statement is recorded as provenance, not as independent rules evidence.
+Codex permission: **stated by the user; official wording/link not yet recorded**. Status remains **UNVERIFIED** until the official wording or link is recorded and checked. The user statement is provenance, not independent rules evidence.

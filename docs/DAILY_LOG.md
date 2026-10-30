@@ -1,5 +1,12 @@
 # Daily log
 
+## 2026-10-30 — Phase 4 T06 registry contract correction (Codex)
+
+- What changed: aligned the source registry with the latest owner-supplied titles and fields, removing `title_verified` and `edition_year`; citations now require `retrieved: true`, and verified cards additionally require `verified_by_user: true`. The requested tier enum omits `gap`; JNKVV/RVSKVV is recorded as `cross-check` only to remain non-citable, with its source-gap status explained in notes and the content plan. The prior Phase 4 entry remains historical; its registry snapshot is marked superseded in the plan.
+- Codex permission remains stated by the user; official wording/link is not recorded, so status remains UNVERIFIED. No source excerpts exist locally; no production disease cards were drafted. Hindi remains UNREVIEWED and the proposed crops remain unconfirmed. T06 stays PARTIAL.
+- Verification: correction-pass disease-card schema/registry tests **56 passed**; full suite **960 passed**; compileall exit 0; both `kb/` YAML files parsed; secret scan, metadata-only `.env` checks, and final whitespace/diff checks are recorded in `docs/muse-code-log/t06-kb-registry-codex.md`.
+- No network/API calls, dependency changes, `.env` access, or live tests. Live SAM remains NO-GO.
+
 ## 2026-10-30 — Phase 4 T06 KB schema, source registry, and validator (Codex)
 
 - What changed: added the project-local `kb/sources.yaml` registry with only the eight owner-supplied candidate entries, all retrieval/title/user-verification flags false; extended the disease-card validator with explicit card status, region tags, per-claim source locators, per-language review metadata, citation eligibility, and conservative dosage/mixing pattern checks; preserved the general safety-card loader. Added one `SYNTHETIC_TEST` fixture under tests that production loading rejects. Recorded the Codex permission statement as user-stated but UNVERIFIED.
