@@ -206,9 +206,10 @@ def test_unretrieved_source_cannot_be_cited():
         validate_disease_card(production_test_card(), registry=registry)
 
 
-def test_cross_check_sources_cannot_be_cited():
+@pytest.mark.parametrize("tier", ["cross-check", "gap"])
+def test_cross_check_and_gap_sources_cannot_be_cited(tier):
     registry = eligible_test_registry()
-    registry[0]["tier"] = "cross-check"
+    registry[0]["tier"] = tier
     with pytest.raises(ValueError, match="not citable"):
         validate_disease_card(production_test_card(), registry=registry)
 
@@ -266,6 +267,12 @@ def test_registry_integrity_unique_ids_enums_and_exact_fields():
     assert set(entries[0]) == SOURCE_FIELDS
 
 
+def test_gap_is_a_valid_registry_tier():
+    entries = project_registry()
+    entries[6]["tier"] = "gap"
+    assert validate_source_registry(entries)["jnkvv_rvskvv_package"]["tier"] == "gap"
+
+
 def test_seeded_registry_keeps_all_candidate_sources_unverified():
     entries = load_source_registry()
     assert len(entries) == 8
@@ -293,7 +300,8 @@ def test_seeded_registry_keeps_all_candidate_sources_unverified():
     assert entries["wamis_mp_zone_advisories"]["region_tag"] == "MP"
     assert entries["wamis_mp_zone_advisories"]["tier"] == "supplementary"
     assert entries["cpri_hindi_bulletin"]["tier"] == "cross-check"
-    assert "Source gap" in entries["jnkvv_rvskvv_package"]["notes"]
+    assert entries["jnkvv_rvskvv_package"]["tier"] == "gap"
+    assert "No package was found" in entries["jnkvv_rvskvv_package"]["notes"]
 
 
 def test_general_safety_card_loading_contract_is_unchanged():

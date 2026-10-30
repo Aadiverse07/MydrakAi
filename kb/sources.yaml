@@ -56,11 +56,11 @@
   title: JNKVV/RVSKVV package
   publisher: JNKVV/RVSKVV
   region_tag: MP
-  tier: cross-check
+  tier: gap
   local_path: null
   retrieved: false
   verified_by_user: false
-  notes: Source gap; not retrieved. Cross-check is the available non-citable tier under the declared enum.
+  notes: No package was found; source not retrieved.
 - id: cpri_hindi_bulletin
   title: CPRI Hindi bulletin
   publisher: CPRI

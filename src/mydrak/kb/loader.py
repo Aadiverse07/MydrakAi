@@ -20,7 +20,7 @@ SOURCE_FIELDS = {
 }
 _LANGUAGES = ("en", "hi")
 _REGIONS = {"national", "MP", "Punjab", "Tamil Nadu"}
-_TIERS = {"primary", "supplementary", "cross-check"}
+_TIERS = {"primary", "supplementary", "cross-check", "gap"}
 _STATUS = {"draft", "verified"}
 _REVIEW_STATUS = {"UNREVIEWED", "REVIEWED"}
 _DOSAGE_PATTERN = re.compile(
@@ -254,7 +254,7 @@ def validate_disease_card(
     if not synthetic:
         for ref in refs:
             source = indexed_registry[ref["source_id"]]
-            if source["tier"] == "cross-check":
+            if source["tier"] in {"cross-check", "gap"}:
                 raise ValueError(f"source {source['id']} tier is not citable")
             if not source["retrieved"]:
                 raise ValueError(f"source {source['id']} is not retrieved")

@@ -79,3 +79,35 @@ Correction-pass verification:
 - Safe secret-pattern scan over the nine scoped files: 0 matches, exit 0; emitted only counts and file/line locations.
 - `.env` metadata only: `git check-ignore -v .env` exit 0 (`.gitignore:2`); `git ls-files -- .env` exit 0 with no tracked path; `git status --short --ignored -- .env` exit 0 (`!! .env`). Contents were not read.
 - Untracked-file whitespace scan: 0 trailing whitespace; `git diff --check`: exit 0.
+
+## Gap-tier and test regression follow-up (2026-10-30)
+
+Compared `git diff e087e23 ef1aa7b -- tests/`:
+
+- `test_unretrieved_or_unverified_title_source_cannot_be_cited` had two
+  parameter cases (`retrieved`, `title_verified`); the latter was removed when
+  the revised registry schema removed `title_verified`. This case is obsolete
+  under the requested current field contract.
+- `test_cross_check_and_gap_sources_cannot_be_cited` lost its `gap` parameter
+  because that tier had been excluded from the enum. This was genuine lost
+  behavior and is restored: both tiers are rejected for citations.
+- `test_pau_citation_requires_edition_year` was removed when the revised source
+  entry field set omitted `edition_year`; the test is not applicable to that
+  contract and does not correspond to a validator field now.
+- Source-ID renames in the synthetic fixture and chemical tests were data
+  updates, not lost assertions. No other acceptance assertion was weakened.
+
+The owner clarified that `gap` is a valid tier meaning a source not found. The
+registry now gives JNKVV/RVSKVV `tier: gap` and notes “No package was found;
+source not retrieved.” Added explicit tests for gap enum acceptance and
+rejection of citations to either gap or cross-check sources.
+
+Follow-up verification:
+
+- `python3 -m pytest tests/test_disease_card_schema.py -q`: **58 passed** (exit 0).
+- `python3 -m pytest -q`: **962 passed** (exit 0).
+- `python3 -m compileall -q src tests eval`: exit 0.
+- Safe YAML parsing of all `kb/**/*.yaml`: 2 files parsed, exit 0.
+- Safe secret-pattern scan over scoped changed files: 0 matches, exit 0; output contains counts/locations only.
+- `.env` metadata only: `git check-ignore -v .env` exit 0; `git ls-files -- .env` exit 0 with no path; `git status --short --ignored -- .env` exit 0 (`!! .env`). Contents were not read.
+- `git diff --check`: exit 0.

@@ -1,5 +1,12 @@
 # Daily log
 
+## 2026-10-30 — T06 registry gap tier and test regression check (Codex)
+
+- Compared `git diff e087e23 ef1aa7b -- tests/`. The title-verification parameter case was obsolete because `title_verified` is not in the revised registry contract; the PAU edition-year test was obsolete because `edition_year` is not in that contract. The `gap` citation parameter had been dropped solely because the enum omitted it; restored it as a non-citable tier and added an enum-acceptance test.
+- JNKVV/RVSKVV is now `tier: gap`, with note “No package was found; source not retrieved.” Both `gap` and `cross-check` citations are rejected. T06 remains PARTIAL.
+- Verification: focused schema/registry tests **58 passed**; full suite **962 passed**; compileall passed; all `kb/` YAML parsed; safe secret scan returned 0 matches; `.env` checks used Git metadata only; whitespace and diff checks clean. Exact results are in `docs/muse-code-log/t06-kb-registry-codex.md`.
+- No network/API calls, `.env` access, dependency changes, or live tests. Live SAM remains NO-GO.
+
 ## 2026-10-30 — Phase 4 T06 registry contract correction (Codex)
 
 - What changed: aligned the source registry with the latest owner-supplied titles and fields, removing `title_verified` and `edition_year`; citations now require `retrieved: true`, and verified cards additionally require `verified_by_user: true`. The requested tier enum omits `gap`; JNKVV/RVSKVV is recorded as `cross-check` only to remain non-citable, with its source-gap status explained in notes and the content plan. The prior Phase 4 entry remains historical; its registry snapshot is marked superseded in the plan.

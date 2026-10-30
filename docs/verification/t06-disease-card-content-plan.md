@@ -97,13 +97,12 @@ national ICAR package plus MP advisory overlay. No Hindi reviewer is confirmed
 and Hindi remains UNREVIEWED. The Codex-permission statement is user-stated;
 Official Rules evidence remains UNVERIFIED.
 
-The allowed tier enum has no `gap` value, although JNKVV/RVSKVV is supplied as
-a source gap. To preserve the enum and fail closed, its tier is `cross-check`
-solely as a non-citable placeholder, with source-gap status stated in `notes`;
-this is a project-local compatibility choice, not a claim that it is actually
-a cross-check publication. Registry citation requires `retrieved: true`;
-verified cards additionally require `verified_by_user: true`. CPRI Hindi and
-JNKVV/RVSKVV cannot be cited because they are tagged `cross-check`.
+The owner subsequently clarified that `gap` is a valid tier for sources not
+found. JNKVV/RVSKVV is now `tier: gap`, with the note “No package was found;
+source not retrieved.” Both `gap` and `cross-check` are non-citable. Registry
+citation requires `retrieved: true`; verified cards additionally require
+`verified_by_user: true`. The CPRI Hindi entry is tagged `cross-check` and the
+JNKVV/RVSKVV gap entry is tagged `gap`, so neither can be cited.
 
 No files exist under `docs/kb/source_excerpts/`; no production cards were
 drafted. Needed next: local excerpts with document/page/section references,
