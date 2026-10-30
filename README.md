@@ -37,6 +37,25 @@ python3 -m pytest
 
 Copy `.env.example` to `.env` when later phases need keys. Never commit `.env`.
 
+## Live provider gate (not enabled)
+
+Live provider clients and smoke scripts are not available in this offline build.
+The shared Phase 9 guard foundation requires a future caller to supply
+`--live-authorized`, `MYDRAK_LIVE=1`, a positive `--max-spend-usd`, a local
+ignored spend-ledger file, a credential environment variable, verified model
+configuration, explicit input/output token bounds, and known prices before a
+call can be budgeted. The repository's current `config/models.yaml` still has
+`TODO(verify)` model IDs, endpoints, prices, and timeouts, and only an
+ambiguous `max_tokens` field. No caller is connected to this gate, and no
+live call is authorized by these setup notes. A local spend reservation is an
+estimate, not a provider billing cap or guarantee against charges.
+
+The user reports approximately $97.40 in API credits and reserves at least $50
+for judging/final demo; these account figures are unverified, making $47.40 an
+upper bound on possible development spend. The first live-test cap must be set
+by the user, and any live call requires separate authorization after the
+account, billing, privacy, and compatibility gates are met.
+
 ## Safety and honest limits
 
 - Preliminary guidance only; never a confirmed diagnosis. Does not replace an
