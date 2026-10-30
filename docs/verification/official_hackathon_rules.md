@@ -12,7 +12,7 @@ Meta's [official hackathon page](https://dev.meta.ai/events/global-hackathon) an
 | Submission form/artifacts | Event page identifies a project submission through the event portal, but does not expose required form fields or file formats. | **UNVERIFIED**; need Official Rules and active submission portal. |
 | Demo/video requirement and length | Event page describes judging but does not state a video duration or required video artifact. | **UNVERIFIED**; do not assume the specification's 3-minute pitch is allowed as a submission limit. |
 | Non-Meta tools, providers, hosting | Page names Meta Model API, Meta open-weight models and Muse Code, and lists partner offers for selected users. It does not define whether Telegram, hosting, database, ffmpeg or other third-party services are allowed. | **UNVERIFIED**; requires Official Rules. |
-| Meta model requirements | Event page encourages use of Meta's Muse models, SAM 3.1, open weights, and Muse Code; says use these tools for the hackathon. No exact mandatory-use test is available in the accessible page. | **PARTIALLY VERIFIED**; whether a specific Meta product/model is mandatory remains unresolved. |
+| Meta model requirements | The event page encourages use of Meta's Muse models, SAM 3.1, open weights, and Muse Code; says use these tools for the hackathon. No exact mandatory-use test is available in the accessible page. | **PARTIALLY VERIFIED**; whether a specific Meta product/model is mandatory remains unresolved. |
 | AI-generated code / coding agents | The event page lists Muse Code as a coding agent, but does not state rules for other AI coding tools or disclosure requirements. | **UNVERIFIED**; requires Official Rules. |
 | Attribution, licensing, open source, repository | The accessible event page does not set repository visibility, ownership/licensing, attribution, or open-source requirements. | **UNVERIFIED**; requires Official Rules and waiver terms. |
 | Eligibility | Official event page states worldwide participation subject to local law, sanctions/export restrictions and exclusions, and excludes Meta/Cerebral Valley employees/contractors/interns, government-affiliated individuals and specified family/household members. | **PARTIALLY VERIFIED**; individual eligibility must be checked against full rules/waiver. |
@@ -34,3 +34,7 @@ No official rules document was obtained on this recheck. The blocker remains ope
 - Cerebral Valley, [Meta Global AI Developer Hackathon](https://events.cerebralvalley.ai/e/meta-ai-developer-hackathon), accessed 2026-10-27.
 
 Secondary summaries were not used to establish rules. The full official rules document and any submission portal requirements remain a required follow-up before launch/submission decisions.
+
+## Project-owner statement (2026-10-30)
+
+The user stated that Codex is permitted by the Official Rules. This is **UNVERIFIED** until the official wording or a link is recorded and checked. The user statement is recorded as provenance, not as independent rules evidence.

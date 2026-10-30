@@ -1,0 +1,71 @@
+# SYNTHETIC_TEST fixture only. Placeholder text is not agricultural content.
+id: SYNTHETIC_TEST
+crop: synthetic_crop
+names:
+  en: Synthetic placeholder name
+  hi: Synthetic placeholder name
+symptoms:
+  - Synthetic placeholder symptom
+confusable_with:
+  - synthetic_other_card
+follow_up_questions:
+  - id: synthetic_question
+    en: Synthetic placeholder question?
+    hi: Synthetic placeholder question?
+low_risk_steps:
+  en:
+    - Synthetic placeholder step
+  hi:
+    - Synthetic placeholder step
+chemical_options: []
+when_to_refer: Synthetic placeholder referral condition
+sources:
+  - soybean_extension_unresolved
+reviewed_by: null
+status: draft
+region_tags:
+  - MP
+claim_sources:
+  - claim: names.en
+    source_id: soybean_extension_unresolved
+    page: SYNTHETIC_TEST
+    section: SYNTHETIC_TEST
+  - claim: names.hi
+    source_id: soybean_extension_unresolved
+    page: SYNTHETIC_TEST
+    section: SYNTHETIC_TEST
+  - claim: symptoms[0]
+    source_id: soybean_extension_unresolved
+    page: SYNTHETIC_TEST
+    section: SYNTHETIC_TEST
+  - claim: confusable_with[0]
+    source_id: soybean_extension_unresolved
+    page: SYNTHETIC_TEST
+    section: SYNTHETIC_TEST
+  - claim: follow_up_questions[0].en
+    source_id: soybean_extension_unresolved
+    page: SYNTHETIC_TEST
+    section: SYNTHETIC_TEST
+  - claim: follow_up_questions[0].hi
+    source_id: soybean_extension_unresolved
+    page: SYNTHETIC_TEST
+    section: SYNTHETIC_TEST
+  - claim: low_risk_steps.en[0]
+    source_id: soybean_extension_unresolved
+    page: SYNTHETIC_TEST
+    section: SYNTHETIC_TEST
+  - claim: low_risk_steps.hi[0]
+    source_id: soybean_extension_unresolved
+    page: SYNTHETIC_TEST
+    section: SYNTHETIC_TEST
+  - claim: when_to_refer
+    source_id: soybean_extension_unresolved
+    page: SYNTHETIC_TEST
+    section: SYNTHETIC_TEST
+review_status:
+  en: UNREVIEWED
+  hi: UNREVIEWED
+language_reviewers:
+  en: null
+  hi: null
+test_only: true

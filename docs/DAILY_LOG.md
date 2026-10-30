@@ -1,5 +1,12 @@
 # Daily log
 
+## 2026-10-30 — Phase 4 T06 KB schema, source registry, and validator (Codex)
+
+- What changed: added the project-local `kb/sources.yaml` registry with only the eight owner-supplied candidate entries, all retrieval/title/user-verification flags false; extended the disease-card validator with explicit card status, region tags, per-claim source locators, per-language review metadata, citation eligibility, and conservative dosage/mixing pattern checks; preserved the general safety-card loader. Added one `SYNTHETIC_TEST` fixture under tests that production loading rejects. Recorded the Codex permission statement as user-stated but UNVERIFIED.
+- Content boundary: proposed MP-first region and tomato/potato/soybean crops are not confirmed. No `docs/kb/source_excerpts/` directory or source excerpts were present, so no production disease cards or agricultural claims were drafted. Hindi remains UNREVIEWED. T06 stays PARTIAL.
+- Verification: disease-card schema/registry tests **59 passed**; full suite **963 passed**; `python3 -m compileall -q src tests eval` exit 0; both `kb/` YAML files parsed; safe secret-pattern scan 0 matches; `.env` ignored and untracked per Git metadata only; `git diff --check` clean. Exact commands/statuses are in `docs/muse-code-log/t06-kb-registry-codex.md`.
+- No network, dependency installation, `.env` read, credentials, media, live provider calls, or credits. Live SAM remains NO-GO.
+
 
 ## 2026-10-27 — Phase 0: repository foundation
 

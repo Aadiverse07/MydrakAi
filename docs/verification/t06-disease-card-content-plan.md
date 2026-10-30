@@ -47,3 +47,36 @@ English and Hindi content must both be present. B6 specifically requires native-
 After cards are sourced and approved, validate every card, then build the trusted T05 crop allowlist from the unique `crop` values and disease-ID allowlist from unique `id` values in that approved production-card set. Exclude `general_safety.yaml` and all synthetic/test fixtures. Fail closed on missing/duplicate IDs, unapproved crop values, or cards lacking review evidence. This derivation is a proposed repository process; no production card set currently exists.
 
 The S2 overlap helper exists, but do not use it as production matching until the approved card set and trusted vocabulary exist. No disease facts, citations, treatment content, reviewer identities, or approvals are supplied by this plan.
+
+## Phase 4 T06 registry and schema work (2026-10-30)
+
+Project owner supplied a provisional scope: Madhya Pradesh first, with tomato,
+potato, and soybean proposed crops. The crops are **not confirmed**. The stated
+source posture is a national ICAR package plus an MP advisory overlay. Cards
+remain `draft` until sources are retrieved and verified by the user. No Hindi
+reviewer is confirmed; every Hindi string remains `UNREVIEWED`.
+
+`kb/sources.yaml` now records only the eight source candidates supplied by the
+project owner. All start with `retrieved: false`, `title_verified: false`, and
+`verified_by_user: false`. The CPRI GAP title/year/publisher detail remains
+unverified against the PDF. The soybean bulletin title remains unresolved. PAU
+is supplementary/Punjab and has no edition year; the validator rejects PAU
+citation until an edition is identified. The CPRI Hindi entry is cross-check
+only and not citable. No other source details were added.
+
+The validator adds a project-local schema for `status`, `region_tags`,
+`claim_sources` (`claim`, `source_id`, `page`, `section`), language review
+status/reviewer fields, and citation eligibility. It requires source trace
+references for all card content paths. Non-empty chemical options retain the
+existing local `{text, source, label_instruction}` shape, where `source` is a
+registry ID. Dosage/mixing detection is a conservative local text-pattern
+guard, not a complete language-aware safety review. The single
+`SYNTHETIC_TEST` fixture is test-only and rejected by the production loader.
+These structural gates do not establish agricultural correctness, source
+validity, translation quality, or review approval.
+
+No files exist under `docs/kb/source_excerpts/`; therefore no production card
+was drafted. Required next evidence: project-owner confirmation of the three
+crops and per-crop card allocation; actual source documents/excerpts with page
+and section locators; confirmation of the CPRI and soybean titles; PAU edition
+year if used; and qualified English/agronomic and native-Hindi review evidence.
