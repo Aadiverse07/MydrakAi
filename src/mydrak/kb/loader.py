@@ -15,8 +15,8 @@ DISEASE_REQUIRED_KEYS = (
     "claim_sources", "review_status", "language_reviewers",
 )
 SOURCE_FIELDS = {
-    "id", "title", "publisher", "region_tag", "tier", "local_path",
-    "retrieved", "verified_by_user", "notes",
+    "id", "title", "publisher", "region_tag", "tier", "edition_year",
+    "local_path", "retrieved", "title_verified", "verified_by_user", "notes",
 }
 _LANGUAGES = ("en", "hi")
 _REGIONS = {"national", "MP", "Punjab", "Tamil Nadu"}
@@ -78,9 +78,12 @@ def validate_source_registry(registry: object) -> dict[str, dict]:
             raise ValueError(f"{field}.region_tag is invalid")
         if not isinstance(entry["tier"], str) or entry["tier"] not in _TIERS:
             raise ValueError(f"{field}.tier is invalid")
+        year = entry["edition_year"]
+        if year is not None and (type(year) is not int or year <= 0):
+            raise ValueError(f"{field}.edition_year must be a positive integer or null")
         if entry["local_path"] is not None and not isinstance(entry["local_path"], str):
             raise ValueError(f"{field}.local_path must be text or null")
-        for flag in ("retrieved", "verified_by_user"):
+        for flag in ("retrieved", "title_verified", "verified_by_user"):
             if type(entry[flag]) is not bool:
                 raise ValueError(f"{field}.{flag} must be boolean")
         indexed[entry["id"]] = entry
@@ -256,8 +259,10 @@ def validate_disease_card(
             source = indexed_registry[ref["source_id"]]
             if source["tier"] in {"cross-check", "gap"}:
                 raise ValueError(f"source {source['id']} tier is not citable")
-            if not source["retrieved"]:
-                raise ValueError(f"source {source['id']} is not retrieved")
+            if source["id"] == "pau_package_of_practices" and source["edition_year"] is None:
+                raise ValueError("PAU source cannot be cited until edition_year is recorded")
+            if not source["retrieved"] or not source["title_verified"]:
+                raise ValueError(f"source {source['id']} is not retrieved and title-verified")
             if source["tier"] == "supplementary" and source["region_tag"] not in card["region_tags"]:
                 raise ValueError(f"card must show supplementary source region {source['region_tag']}")
         if card["status"] == "verified":

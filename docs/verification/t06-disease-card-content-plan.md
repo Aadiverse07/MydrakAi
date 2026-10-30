@@ -85,26 +85,39 @@ crops and per-crop card allocation; actual source documents/excerpts with page
 and section locators; confirmation of the CPRI and soybean titles; PAU edition
 year if used; and qualified English/agronomic and native-Hindi review evidence.
 
-## Revised registry request (2026-10-30)
+## Registry request correction history (2026-10-30; superseded by owner follow-up)
 
-The latest owner request defines registry fields as `id`, `title`, `publisher`,
-`region_tag`, `tier`, `local_path`, `retrieved`, `verified_by_user`, and
-`notes`; it does not include `title_verified` or `edition_year`. The eight
-registry titles now exactly follow the supplied names. Every source remains
-unretrieved and unverified by the user. The user-proposed scope remains MP
-first with tomato, potato, and soybean **to be confirmed**; source posture is
-national ICAR package plus MP advisory overlay. No Hindi reviewer is confirmed
-and Hindi remains UNREVIEWED. The Codex-permission statement is user-stated;
-Official Rules evidence remains UNVERIFIED.
+An intermediate owner correction temporarily defined registry fields without
+`title_verified` or `edition_year`. That snapshot is retained here to preserve
+the change history, but it is no longer the active registry contract. The
+eight candidate titles and `gap` tier update remain in effect.
 
 The owner subsequently clarified that `gap` is a valid tier for sources not
 found. JNKVV/RVSKVV is now `tier: gap`, with the note “No package was found;
 source not retrieved.” Both `gap` and `cross-check` are non-citable. Registry
-citation requires `retrieved: true`; verified cards additionally require
-`verified_by_user: true`. The CPRI Hindi entry is tagged `cross-check` and the
-JNKVV/RVSKVV gap entry is tagged `gap`, so neither can be cited.
+citation requirements are detailed in the current gate below. The CPRI Hindi
+entry is tagged `cross-check` and the JNKVV/RVSKVV gap entry is tagged `gap`,
+so neither can be cited.
 
 No files exist under `docs/kb/source_excerpts/`; no production cards were
 drafted. Needed next: local excerpts with document/page/section references,
 owner confirmation of target crops, and actual retrieval/user verification for
 sources. Hindi remains unreviewed.
+
+## Current registry contract — owner correction
+
+Each of the eight supplied candidate entries contains `title_verified` and
+`edition_year`. All candidates are seeded with `title_verified: false` and
+`edition_year: null`; `retrieved` and `verified_by_user` also remain false.
+The title field is not treated as verified merely because a candidate name is
+present. Registry validation requires `title_verified` to be a boolean and
+`edition_year` to be a positive integer or null.
+
+A production-card citation is rejected if its source is `gap` or `cross-check`,
+is not retrieved, or has `title_verified: false`. A citation to
+`pau_package_of_practices` is additionally rejected while its `edition_year`
+is null. A `verified` disease card still requires reviewed languages, confirmed
+reviewer fields, and user verification of every cited source. These are local
+validation gates; they do not establish source validity or agricultural
+accuracy. No source has been retrieved or verified, so no candidate is
+currently citable and T06 remains PARTIAL.

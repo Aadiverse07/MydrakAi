@@ -33,7 +33,7 @@ def eligible_test_registry() -> list[dict]:
     """Synthetic validator setup; these flags are not repository evidence."""
     entries = project_registry()
     entry = copy.deepcopy(entries[1])
-    entry.update(retrieved=True, verified_by_user=True)
+    entry.update(retrieved=True, title_verified=True, verified_by_user=True)
     return [entry]
 
 
@@ -199,11 +199,27 @@ def test_unknown_claim_source_is_rejected():
         validate_disease_card(card, registry=eligible_test_registry())
 
 
-def test_unretrieved_source_cannot_be_cited():
+@pytest.mark.parametrize("field", ["retrieved", "title_verified"])
+def test_unretrieved_or_unverified_title_source_cannot_be_cited(field):
     registry = eligible_test_registry()
-    registry[0]["retrieved"] = False
-    with pytest.raises(ValueError, match="not retrieved"):
+    registry[0][field] = False
+    with pytest.raises(ValueError, match="not retrieved and title-verified"):
         validate_disease_card(production_test_card(), registry=registry)
+
+
+def test_pau_citation_requires_edition_year():
+    card = production_test_card()
+    source_id = "pau_package_of_practices"
+    card["sources"] = [source_id]
+    card["region_tags"].append("Punjab")
+    for ref in card["claim_sources"]:
+        ref["source_id"] = source_id
+    registry = [copy.deepcopy(project_registry()[2])]
+    registry[0].update(retrieved=True, title_verified=True, verified_by_user=True)
+    with pytest.raises(ValueError, match="edition_year"):
+        validate_disease_card(card, registry=registry)
+    registry[0]["edition_year"] = 2020
+    assert validate_disease_card(card, registry=registry) is card
 
 
 @pytest.mark.parametrize("tier", ["cross-check", "gap"])
@@ -261,18 +277,18 @@ def test_registry_integrity_unique_ids_enums_and_exact_fields():
     with pytest.raises(ValueError, match="must be boolean"):
         validate_source_registry(malformed)
     malformed = copy.deepcopy(entries)
+    malformed[0]["title_verified"] = "false"
+    with pytest.raises(ValueError, match="title_verified must be boolean"):
+        validate_source_registry(malformed)
+    malformed = copy.deepcopy(entries)
+    malformed[0]["edition_year"] = True
+    with pytest.raises(ValueError, match="edition_year"):
+        validate_source_registry(malformed)
+    malformed = copy.deepcopy(entries)
     malformed[0]["unrequested_fact"] = "no"
     with pytest.raises(ValueError, match="unknown fields"):
         validate_source_registry(malformed)
     assert set(entries[0]) == SOURCE_FIELDS
-
-
-@pytest.mark.parametrize("retired_field", ["title_verified", "edition_year"])
-def test_registry_rejects_fields_removed_from_current_contract(retired_field):
-    entries = project_registry()
-    entries[0][retired_field] = False if retired_field == "title_verified" else 2020
-    with pytest.raises(ValueError, match="unknown fields"):
-        validate_source_registry(entries)
 
 
 def test_gap_is_a_valid_registry_tier():
@@ -285,7 +301,8 @@ def test_seeded_registry_keeps_all_candidate_sources_unverified():
     entries = load_source_registry()
     assert len(entries) == 8
     assert all(
-        not item["retrieved"] and not item["verified_by_user"]
+        not item["retrieved"] and not item["title_verified"]
+        and not item["verified_by_user"] and item["edition_year"] is None
         for item in entries.values()
     )
     expected_titles = {

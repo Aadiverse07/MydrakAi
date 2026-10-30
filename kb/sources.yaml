@@ -6,7 +6,9 @@
   local_path: null
   retrieved: false
   verified_by_user: false
-  notes: Candidate title supplied by the project owner; not retrieved or verified.
+  notes: Candidate title supplied by the project owner; source not retrieved and title not verified.
+  title_verified: false
+  edition_year: null
 - id: icar_iisr_soybean_bulletin_17
   title: ICAR-IISR Soybean Extension Bulletin 17
   publisher: ICAR-IISR
@@ -15,7 +17,9 @@
   local_path: null
   retrieved: false
   verified_by_user: false
-  notes: Candidate title supplied by the project owner; not retrieved or verified.
+  notes: Candidate title supplied by the project owner; source not retrieved and title not verified.
+  title_verified: false
+  edition_year: null
 - id: pau_package_of_practices
   title: PAU Package of Practices
   publisher: PAU
@@ -24,7 +28,9 @@
   local_path: null
   retrieved: false
   verified_by_user: false
-  notes: Candidate title supplied by the project owner; not retrieved or verified.
+  notes: Candidate title supplied by the project owner; source not retrieved and title not verified. Edition year unresolved; citation is blocked until recorded.
+  title_verified: false
+  edition_year: null
 - id: tnau_agritech_soybean
   title: TNAU Agritech Soybean
   publisher: TNAU
@@ -33,7 +39,9 @@
   local_path: null
   retrieved: false
   verified_by_user: false
-  notes: Candidate title supplied by the project owner; not retrieved or verified.
+  notes: Candidate title supplied by the project owner; source not retrieved and title not verified.
+  title_verified: false
+  edition_year: null
 - id: icar_crida_mp_advisories
   title: ICAR-CRIDA MP agro-advisories
   publisher: ICAR-CRIDA
@@ -42,7 +50,9 @@
   local_path: null
   retrieved: false
   verified_by_user: false
-  notes: Candidate title supplied by the project owner; not retrieved or verified.
+  notes: Candidate title supplied by the project owner; source not retrieved and title not verified.
+  title_verified: false
+  edition_year: null
 - id: wamis_mp_zone_advisories
   title: WAMIS MP zone advisories
   publisher: WAMIS
@@ -51,7 +61,9 @@
   local_path: null
   retrieved: false
   verified_by_user: false
-  notes: Candidate title supplied by the project owner; not retrieved or verified.
+  notes: Candidate title supplied by the project owner; source not retrieved and title not verified.
+  title_verified: false
+  edition_year: null
 - id: jnkvv_rvskvv_package
   title: JNKVV/RVSKVV package
   publisher: JNKVV/RVSKVV
@@ -60,7 +72,9 @@
   local_path: null
   retrieved: false
   verified_by_user: false
-  notes: No package was found; source not retrieved.
+  notes: No package was found; source not retrieved and title not verified.
+  title_verified: false
+  edition_year: null
 - id: cpri_hindi_bulletin
   title: CPRI Hindi bulletin
   publisher: CPRI
@@ -69,4 +83,6 @@
   local_path: null
   retrieved: false
   verified_by_user: false
-  notes: Cross-check only; never cite.
+  notes: Cross-check only; never cite. Source not retrieved and title not verified.
+  title_verified: false
+  edition_year: null

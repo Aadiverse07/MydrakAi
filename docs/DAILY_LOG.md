@@ -1,5 +1,11 @@
 # Daily log
 
+## 2026-10-30 — T06 restore registry title/year gates (Codex)
+
+- What changed: restored `title_verified` and `edition_year` to the source registry contract. All eight candidates have `title_verified: false` and `edition_year: null`; citations require a retrieved, title-verified source, and the PAU candidate remains uncitable until its edition year is recorded. Registry notes and the T06 content plan reflect the restored gates. Tests again exercise title-verification and PAU edition-year citation rejection; other registry coverage, including non-citable `gap` and `cross-check`, remains.
+- Verification: focused schema tests **60 passed**; full suite **984 passed**. Remaining compile, YAML, secret, `.env` metadata, and whitespace results are recorded in `docs/muse-code-log/t06-restore-registry-title-year-gates.md`.
+- No source retrieval or disease-card authoring occurred. No external services or credentials were used. Live SAM remains NO-GO.
+
 ## 2026-10-30 — T06 validator regression follow-up (Codex)
 
 - Compared `git diff e087e23 ef1aa7b -- tests/`. The title-verification and PAU edition-year test cases tracked fields removed by the later registry-contract correction. Current `SOURCE_FIELDS` intentionally excludes both; strict unknown-field validation rejects them. Added explicit tests for those retired fields rather than restoring obsolete citation semantics. The dropped `gap` citation case was restored in the existing branch state: `gap` is a valid tier, remains non-citable like `cross-check`, and JNKVV/RVSKVV has the no-package-found note. Other diff changes updated synthetic source IDs, strengthened the synthetic-card marker check, and added a retrieved-flag type check; no validator coverage was lost there.
