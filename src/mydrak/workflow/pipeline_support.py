@@ -1,6 +1,6 @@
 """Small trace, cache, and reply helpers for the synthetic workflow."""
 
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from hashlib import sha256
 import json
@@ -9,6 +9,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from mydrak.decider.extraction import SignalMeasurement, SignalSet
+from mydrak.decider.signals import validate_confidence_band_mapping
 from mydrak.reply.composer import CONFIDENCE_WORDS, compose_reply
 from mydrak.sam.output import SamLimits, SamSegmentation, parse_sam_output
 from mydrak.sam.overlay import T08Result, decode_synthetic_grid, render_synthetic_fixture
@@ -156,6 +157,7 @@ def run_diagnosis_with_retries(
     *,
     supported_crops,
     disease_ids,
+    confidence_bands: Collection[str] | None = None,
     sleeper=None,
 ) -> tuple[DiagnosisResult, int]:
     """Apply B11's two-retry maximum; B8's single repair remains separate."""
@@ -163,6 +165,7 @@ def run_diagnosis_with_retries(
     while True:
         result = run_diagnosis_validation(
             provider, supported_crops=supported_crops, disease_ids=disease_ids,
+            confidence_bands=confidence_bands,
         )
         if result.status is not DiagnosisStatus.UNAVAILABLE or result.reason not in {
             "provider_failure", "repair_provider_failure", "provider_unavailable",
@@ -240,6 +243,7 @@ def unsupported_plant_reply(safety: Mapping[str, object]) -> str:
 
 def load_router_config(path) -> tuple[Mapping[str, object], Mapping[str, object]]:
     values = load_yaml(path)
+    validate_confidence_band_mapping(values.get("confidence_bands"))
     return values.get("weights", {}), values
 
 

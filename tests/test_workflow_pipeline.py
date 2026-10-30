@@ -132,14 +132,30 @@ def test_ask_outcome_escalates_once_then_uses_synthetic_kb_question():
     assert store.get_signals(result.case_id)["escalated"] == 1
 
 
-def test_production_like_missing_s3_s4_refers_without_using_placeholder_thresholds_as_evidence():
+def test_production_like_missing_s3_refers_with_configured_s4_and_no_threshold_override():
     result, (_, spark, _), _, store = _run(override=None)
     assert result.action == "refer"
     signals = store.get_signals(result.case_id)
-    assert signals["s3"] is None and signals["s4"] is None
+    assert signals["s3"] is None and signals["s4"] == 0.8
     assert spark.generate_calls == 0
     assert "cannot tell" in result.reply
     assert SAFETY["safety_line"] in result.reply
+
+
+def test_pipeline_maps_two_confidence_bands_but_still_refers_without_s3():
+    first = _diagnosis()
+    second = {**_diagnosis(), "stated_confidence": "low"}
+    providers = (
+        DeterministicMockDiagnosisProvider((first, second)),
+        DeterministicMockDiagnosisProvider((_diagnosis(),)),
+        _providers()[2],
+    )
+    result, _, _, store = _run(providers=providers)
+    signals = store.get_signals(result.case_id)
+    assert signals["s4"] == 0.25
+    assert signals["s3"] is None
+    assert result.action == "refer"
+    assert result.reason == "decider_refer"
 
 
 def test_retake_outcome_is_only_exercised_by_explicit_test_override():

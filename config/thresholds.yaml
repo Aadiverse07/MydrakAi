@@ -6,6 +6,11 @@ weights:
   s2_kb_match: 0.25
   s3_quality: 0.25
   s4_stated_confidence: 0.25
+# User-approved placeholder mapping; UNVERIFIED and not calibrated.
+confidence_bands:
+  low: 0.25
+  medium: 0.5
+  high: 0.75
 # TODO(verify): accept, agree_min, quality_min, max_followups are initial
 # placeholders. Confirm/retune on dev data in the Decider phase.
 accept: 0.7

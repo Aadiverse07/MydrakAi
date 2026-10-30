@@ -1,5 +1,12 @@
 # Daily log
 
+## 2026-10-30 — T11 configured S4 confidence mapping (Codex)
+
+- What changed: added a pure two-sample S4 mapper that reads the low/medium/high numeric values from `config/thresholds.yaml` and returns the lower mapped or numeric confidence value. Missing/unknown sample values leave S4 unavailable; malformed mapping configuration raises a clear error. The diagnosis validator now accepts only band labels supplied by the validated configuration on the offline workflow path. Both `coordinate_mock_tier1_results()` and the mock photo pipeline use the mapping.
+- Project decision: the user-approved low=0.25, medium=0.5, high=0.75 mapping and lower-of-two aggregation are **UNVERIFIED placeholders**, not calibrated confidence. B3 specifies confidence as a number or band in the 0–1 range but does not specify band mappings. S3 remains unavailable; production routing therefore continues to refer. `quality_min`, retake routing, weights, and policy thresholds were not changed.
+- Verification: focused tests **180 passed**; full suite **1056 passed**; `python3 -m compileall -q src tests eval`, TOML plus six config/KB YAML parses, and `git diff --check` passed. Safe secret-pattern scan found **0 matches** across 14 changed/new files. Git metadata confirms `.env` is ignored and untracked; contents were not read. Exact commands and final Git publication results are in `docs/muse-code-log/s4-mapping-codex.md`.
+- No network, live providers, credentials, `.env` reads, dependency installs, or Git history operations.
+
 ## 2026-10-30 — Phase 8 T09 trace, T15 replay, T18 failure injection (Codex)
 
 - What changed: extended the existing SQLite trace store with the B9 `eval_runs` table and migration for `steps.started_at`; new step rows receive UTC timestamps while old rows are not backfilled with invented times. Unknown token and price data remains NULL. Replaced the workflow's process-local result cache with the existing SQLite `cache` table, keyed by normalized image digest, language, and optional voice hint; only bounded reply metadata is cached, with explicit `SYNTHETIC / MOCK` provenance and no image/overlay bytes.

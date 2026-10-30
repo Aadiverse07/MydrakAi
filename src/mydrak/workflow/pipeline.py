@@ -7,7 +7,8 @@ import uuid
 
 from mydrak.decider.extraction import (
     DecisionResult, SignalSet, extract_agreement,
-    extract_kb_match, extract_quality, route_signals, unavailable,
+    extract_kb_match, extract_quality, extract_sample_confidence,
+    route_signals, unavailable,
 )
 from mydrak.intake.adapter import coerce_image
 from mydrak.kb.loader import load_card, load_safety_card, validate_disease_card
@@ -178,11 +179,24 @@ def run_synthetic_mock_workflow(
         return finish("blocked", "offline_content_unavailable", None)
     state.steps.append(TraceStep("kb_signal_match", "synthetic_test_card", 0.0, model="synthetic_test"))
 
+    try:
+        weights, thresholds = load_router_config(_THRESHOLDS)
+        confidence_mapping = thresholds["confidence_bands"]
+        confidence_bands = tuple(confidence_mapping)
+    except (OSError, TypeError, ValueError, KeyError):
+        state.steps.append(TraceStep("decider_config", "invalid", 0.0, model="local_config"))
+        cache_digest = None
+        return finish(
+            "refer", "decider_config_invalid",
+            _reply("refer", safety, None, "cannot tell", None),
+        )
+
     glimmer_provider.bind_image(image.image_hash)
     started = time.perf_counter()
     crops, diseases = (card["crop"],), (card["id"], "SYNTHETIC_OTHER")
     first, first_retries = run_diagnosis_with_retries(
         glimmer_provider, supported_crops=crops, disease_ids=diseases,
+        confidence_bands=confidence_bands,
     )
     first_step = make_step("glimmer_sample_1", first.status.value, started)
     state.steps.append(TraceStep(first_step.step_name, first_step.outcome, first_step.latency_ms,
@@ -198,6 +212,7 @@ def run_synthetic_mock_workflow(
         spark_started = time.perf_counter()
         spark, spark_retries = run_diagnosis_with_retries(
             spark_provider, supported_crops=crops, disease_ids=diseases,
+            confidence_bands=confidence_bands,
         )
         spark_step = make_step("spark_escalation", spark.status.value, spark_started)
         state.steps.append(TraceStep(spark_step.step_name, spark_step.outcome, spark_step.latency_ms,
@@ -213,6 +228,7 @@ def run_synthetic_mock_workflow(
     second_started = time.perf_counter()
     second, second_retries = run_diagnosis_with_retries(
         glimmer_provider, supported_crops=crops, disease_ids=diseases,
+        confidence_bands=confidence_bands,
     )
     second_step = make_step("glimmer_sample_2", second.status.value, second_started)
     state.steps.append(TraceStep(second_step.step_name, second_step.outcome, second_step.latency_ms,
@@ -228,6 +244,7 @@ def run_synthetic_mock_workflow(
         spark_started = time.perf_counter()
         spark, spark_retries = run_diagnosis_with_retries(
             spark_provider, supported_crops=crops, disease_ids=diseases,
+            confidence_bands=confidence_bands,
         )
         spark_step = make_step("spark_escalation", spark.status.value, spark_started)
         state.steps.append(TraceStep(spark_step.step_name, spark_step.outcome, spark_step.latency_ms,
@@ -248,12 +265,14 @@ def run_synthetic_mock_workflow(
     same = (left.crop, left.issue) == (right.crop, right.issue)
     s2 = extract_kb_match(left.issue, [card], left.symptoms_observed) if same else unavailable("tier1_labels_disagree")
     signals = apply_signal_override(
-        SignalSet(s1, s2, extract_quality(), unavailable("s4_mapping_unresolved")), signal_override,
+        SignalSet(
+            s1, s2, extract_quality(),
+            extract_sample_confidence(
+                left.stated_confidence, right.stated_confidence, confidence_mapping,
+            ),
+        ),
+        signal_override,
     )
-    try:
-        weights, thresholds = load_router_config(_THRESHOLDS)
-    except (OSError, TypeError, ValueError):
-        weights, thresholds = {}, {}
     started = time.perf_counter()
     decision = route_signals(
         signals, weights=weights, thresholds=thresholds,
@@ -269,6 +288,7 @@ def run_synthetic_mock_workflow(
         started = time.perf_counter()
         spark, spark_retries = run_diagnosis_with_retries(
             spark_provider, supported_crops=crops, disease_ids=diseases,
+            confidence_bands=confidence_bands,
         )
         spark_step = make_step("spark_escalation", spark.status.value, started)
         state.steps.append(TraceStep(spark_step.step_name, spark_step.outcome, spark_step.latency_ms,
