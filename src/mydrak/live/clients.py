@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import base64
 from collections.abc import Callable, Collection, Mapping
-from dataclasses import asdict
 from decimal import Decimal
 from http import HTTPStatus
 import json
@@ -26,11 +25,10 @@ from mydrak.live.provider_contract import (
 )
 from mydrak.live.retry import call_with_retries
 from mydrak.privacy.data_policy import (
-    DataClass, DataPolicy, DataPolicyError, ProcessingEvidence, ProviderMode,
-    require_external_processing_allowed,
+    DataClass, DataPolicy, DataPolicyError,
 )
 from mydrak.trace.store import TraceStep, estimate_token_cost
-from mydrak.vision.diagnosis import DiagnosisOutput, DiagnosisProvider, validate_diagnosis_json
+from mydrak.vision.diagnosis import DiagnosisProvider
 
 MAX_PROVIDER_RESPONSE_BYTES = MAX_RESPONSE_BYTES
 _B8_INSTRUCTIONS = (
@@ -98,6 +96,9 @@ class _BaseClient(DiagnosisProvider):
             raise ValueError("a trace callback is required")
         self.last_step: TraceStep | None = None
         self.last_request_sent = False
+        self.request_ever_sent = False
+        self.last_guard_condition: str | None = None
+        self.last_config_condition: str | None = None
         self._last_failure: tuple[str, int | None, str | None] = ("network_error", None, None)
 
     def generate(self) -> object:
@@ -114,20 +115,30 @@ class _BaseClient(DiagnosisProvider):
 
     def _request(self, text: str) -> str:
         self.last_request_sent = False
+        self.last_guard_condition = None
+        self.last_config_condition = None
         self._last_failure = ("network_error", None, None)
         try:
             url = chat_completions_url(self._config.get("endpoint"))
             model = require_text(self._config.get("model_id"), "model ID")
             body = self._body(model, text)
+        except LiveConfigError as exc:
+            self.last_config_condition = exc.condition
+            raise
         except (KeyError, TypeError, ValueError):
+            self.last_config_condition = "provider_request"
             raise LiveConfigError("provider configuration or request is invalid", condition="provider_request") from None
 
         def attempt() -> str:
-            reservation = reserve_live_call(
-                self._config, cli_authorized=self._cli_authorized,
-                environ=self._environ, max_spend_usd=self._max_spend_usd,
-                ledger_path=self._ledger_path, credential_env_var=self._credential_env_var,
-            )
+            try:
+                reserve_live_call(
+                    self._config, cli_authorized=self._cli_authorized,
+                    environ=self._environ, max_spend_usd=self._max_spend_usd,
+                    ledger_path=self._ledger_path, credential_env_var=self._credential_env_var,
+                )
+            except LiveGuardError as exc:
+                self.last_guard_condition = exc.condition
+                raise
             key = self._environ.get(self._credential_env_var)
             if not isinstance(key, str) or not key:
                 raise LiveGuardError("required credential environment variable is missing")
@@ -135,6 +146,7 @@ class _BaseClient(DiagnosisProvider):
             transport_error: Exception | None = None
             try:
                 self.last_request_sent = True
+                self.request_ever_sent = True
                 status, raw = self._transport.post_json(
                     url, headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
                     body=body, timeout_s=float(self._config["timeout_s"]),
@@ -273,64 +285,16 @@ class GlimmerClient(_BaseClient):
         }
 
 
-class SparkClient(_BaseClient):
-    """Meta Spark text-only request using the supplied Chat Completions example."""
-
-    def __init__(self, config: Mapping[str, Any], *, context: DiagnosisOutput | tuple[DiagnosisOutput, ...] | None,
-                 data_policy: DataPolicy, data_class: DataClass,
-                 evidence: ProcessingEvidence, use_contributor: bool = False,
-                 cli_authorized: bool, max_spend_usd: Any, ledger_path: str,
-                 environ: Mapping[str, str] | None = None,
-                 transport: JsonTransport | None = None,
-                 trace_callback: Callable[[TraceStep], None] | None = None,
-                 retry_delays_s: tuple[float, ...] = (0.1, 0.2),
-                 sleep: Callable[[float], None] = time.sleep,
-                 supported_crops: Collection[str] = (), disease_ids: Collection[str] = (),
-                 confidence_bands: Collection[str] = ("low", "medium", "high")) -> None:
-        if context is None:
-            self._context = "Synthetic connectivity check; no crop or disease finding is supplied."
-        else:
-            outputs = context if isinstance(context, tuple) else (context,)
-            if not outputs or any(type(item) is not DiagnosisOutput for item in outputs):
-                raise ValueError("Spark context must contain validated diagnosis outputs")
-            for item in outputs:
-                validate_diagnosis_json(
-                    json.dumps(asdict(item)), supported_crops=supported_crops,
-                    disease_ids=disease_ids, confidence_bands=confidence_bands,
-                )
-            self._context = json.dumps([asdict(item) for item in outputs], separators=(",", ":"))
-        if type(use_contributor) is not bool:
-            raise DataPolicyError("Spark provider mode selection is invalid")
-        expected_mode = ProviderMode.CONTRIBUTOR if use_contributor else ProviderMode.STANDARD
-        if evidence.provider_mode is not expected_mode:
-            raise DataPolicyError("Spark evidence does not match selected provider mode")
-        require_external_processing_allowed(data_policy, data_class, evidence)
-        model_key = "model_id_contributor" if use_contributor else "model_id"
-        selected = dict(config)
-        selected["model_id"] = selected.get(model_key)
-        super().__init__(
-            selected, cli_authorized=cli_authorized, max_spend_usd=max_spend_usd,
-            ledger_path=ledger_path, credential_env_var="META_API_KEY",
-            environ=environ, transport=transport if transport is not None else UrllibJsonTransport(),
-            trace_callback=trace_callback, retry_delays_s=retry_delays_s, sleep=sleep,
-            supported_crops=supported_crops, disease_ids=disease_ids,
-            confidence_bands=confidence_bands,
-        )
-
-    @property
-    def _step_name(self) -> str:
-        return "spark_meta"
-
-    def _body(self, model: str, text: str) -> dict[str, Any]:
-        return {
-            "model": model,
-            "messages": [{"role": "user", "content": text + " Evidence: " + self._context}],
-            "max_tokens": self._config["max_tokens"],
-        }
-
-
 def _transport_failure_category(exc: Exception) -> str:
     reason = exc.reason if isinstance(exc, URLError) else None
     if isinstance(exc, (TimeoutError, socket.timeout)) or isinstance(reason, (TimeoutError, socket.timeout)):
         return "timeout"
     return "network_error"
+
+
+def __getattr__(name: str) -> Any:
+    """Lazily preserve the historical SparkClient import without a cycle."""
+    if name == "SparkClient":
+        from mydrak.live.spark_client import SparkClient
+        return SparkClient
+    raise AttributeError(name)

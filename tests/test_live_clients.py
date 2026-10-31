@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+import base64
 from decimal import Decimal
 import json
+import subprocess
+import sys
 
 import pytest
 
@@ -117,6 +120,104 @@ def test_spark_serializes_text_only_and_selects_contributor_only_for_public_test
     assert body["model"] == "test-contributor"
     assert isinstance(body["messages"][0]["content"], str)
     assert "image_url" not in body["messages"][0]["content"]
+
+
+def test_spark_serializes_documented_jpeg_image_shape_and_diagnosis_cap(tmp_path):
+    transport = FakeTransport([response()])
+    image = b"\xff\xd8\xffsynthetic-preprocessed-jpeg"
+    client = SparkClient(
+        CONFIG | {"diagnosis_max_tokens": 384}, context=None,
+        data_policy=DataPolicy.PUBLIC_TEST, data_class=DataClass.PUBLIC_TEST,
+        evidence=ProcessingEvidence(
+            provider_mode=ProviderMode.STANDARD, provider_mode_verified=True,
+            rights_confirmed=True, public_test_provenance_verified=True,
+        ),
+        image_bytes=image, image_provenance="public-test",
+        cli_authorized=True, max_spend_usd="1",
+        ledger_path=str(tmp_path / "ledger.sqlite"), environ=ENV,
+        transport=transport, trace_callback=lambda _: None,
+        supported_crops=("tomato",), disease_ids=("leaf_spot",),
+        sleep=lambda _: None,
+    )
+    client.generate()
+    body = transport.calls[0][2]
+    content = body["messages"][0]["content"]
+    assert body["model"] == "test-model"
+    assert [part["type"] for part in content] == ["text", "image_url"]
+    assert "Return only one JSON object" in content[0]["text"]
+    assert content[1]["image_url"]["url"] == (
+        "data:image/jpeg;base64," + base64.b64encode(image).decode("ascii")
+    )
+    assert body["max_tokens"] == 384
+
+
+def test_spark_client_direct_and_compatibility_imports_do_not_cycle():
+    completed = subprocess.run(
+        [sys.executable, "-c", "from mydrak.live.spark_client import SparkClient; from mydrak.live.clients import SparkClient as LegacySparkClient; assert SparkClient is LegacySparkClient"],
+        env={"PYTHONPATH": "src"}, capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode == 0
+
+
+@pytest.mark.parametrize("marker", [None, "private", "PUBLIC-TEST"])
+def test_spark_image_requires_exact_public_test_marker_before_dispatch(tmp_path, marker):
+    transport = FakeTransport([response()])
+    with pytest.raises(DataPolicyError):
+        SparkClient(
+            CONFIG | {"diagnosis_max_tokens": 384}, context=None,
+            data_policy=DataPolicy.PUBLIC_TEST, data_class=DataClass.PUBLIC_TEST,
+            evidence=ProcessingEvidence(
+                provider_mode=ProviderMode.STANDARD, provider_mode_verified=True,
+                rights_confirmed=True, public_test_provenance_verified=True,
+            ),
+            image_bytes=b"\xff\xd8\xfffixture", image_provenance=marker,
+            cli_authorized=True, max_spend_usd="1",
+            ledger_path=str(tmp_path / "ledger.sqlite"), environ=ENV,
+            transport=transport, trace_callback=lambda _: None,
+            supported_crops=("tomato",), disease_ids=("leaf_spot",),
+        )
+    assert transport.calls == []
+
+
+def test_spark_private_image_requires_explicit_config_allowance(tmp_path):
+    transport = FakeTransport([response()])
+    evidence = ProcessingEvidence(
+        provider_mode=ProviderMode.STANDARD, provider_mode_verified=True,
+        rights_confirmed=True, user_authorization_confirmed=True,
+        privacy_notice_present=True,
+    )
+    with pytest.raises(DataPolicyError, match="not explicitly enabled"):
+        SparkClient(
+            CONFIG | {"diagnosis_max_tokens": 384}, context=None,
+            data_policy=DataPolicy.PRIVATE, data_class=DataClass.PRIVATE,
+            evidence=evidence, image_bytes=b"\xff\xd8\xfffixture",
+            image_provenance="private", cli_authorized=True,
+            max_spend_usd="1", ledger_path=str(tmp_path / "ledger.sqlite"),
+            environ=ENV, transport=transport, trace_callback=lambda _: None,
+        )
+    assert transport.calls == []
+
+
+def test_explicitly_allowed_private_image_uses_standard_model(tmp_path):
+    transport = FakeTransport([response()])
+    evidence = ProcessingEvidence(
+        provider_mode=ProviderMode.STANDARD, provider_mode_verified=True,
+        rights_confirmed=True, user_authorization_confirmed=True,
+        privacy_notice_present=True,
+    )
+    client = SparkClient(
+        CONFIG | {"diagnosis_max_tokens": 384, "allow_private_upload": True},
+        context=None, data_policy=DataPolicy.PRIVATE, data_class=DataClass.PRIVATE,
+        evidence=evidence, image_bytes=b"\xff\xd8\xfffixture",
+        image_provenance="private", cli_authorized=True,
+        max_spend_usd="1", ledger_path=str(tmp_path / "ledger.sqlite"),
+        environ=ENV, transport=transport, trace_callback=lambda _: None,
+        supported_crops=("tomato",), disease_ids=("leaf_spot",),
+    )
+    client.generate()
+    body = transport.calls[0][2]
+    assert body["model"] == "test-model"
+    assert body["messages"][0]["content"][1]["type"] == "image_url"
 
 
 def test_spark_standard_variant_accepts_authorized_private_data(tmp_path):

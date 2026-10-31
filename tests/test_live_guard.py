@@ -174,6 +174,22 @@ def test_config_loader_accepts_numeric_prices_without_claiming_verification(tmp_
     assert loaded["price_output_per_1m"] == 1.5
 
 
+def test_spark_diagnosis_token_cap_is_optional_but_must_be_bounded(tmp_path):
+    config_path = tmp_path / "models.yaml"
+    config_path.write_text(
+        "tier2:\n  model_id: spark\n  model_id_contributor: spark-contributor\n"
+        "  endpoint: https://example.test/v1\n  timeout_s: 3\n  max_tokens: 2048\n"
+        "  diagnosis_max_tokens: 512\n  max_input_tokens_estimate: 99\n"
+        "  price_input_per_1m: 0.35\n  price_output_per_1m: 1.5\n",
+        encoding="utf-8",
+    )
+    loaded = load_live_provider_config(config_path, "tier2")
+    assert loaded["diagnosis_max_tokens"] == 512
+    config_path.write_text(config_path.read_text().replace("diagnosis_max_tokens: 512", "diagnosis_max_tokens: 4096"))
+    with pytest.raises(LiveGuardError, match="exceeds max_tokens"):
+        load_live_provider_config(config_path, "tier2")
+
+
 def test_config_loader_requires_input_token_estimate(tmp_path):
     config_path = tmp_path / "models.yaml"
     config_path.write_text(

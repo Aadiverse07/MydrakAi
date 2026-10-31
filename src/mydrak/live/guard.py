@@ -93,6 +93,15 @@ def load_live_provider_config(path: str | Path, provider: str) -> dict[str, Any]
         if not isinstance(host, Mapping):
             raise LiveConfigError("Glimmer host configuration is missing", condition="glimmer_host")
         _clean_config_text(host.get("choice"), "Glimmer host", error_type=LiveConfigError)
+    if provider == "tier2" and "diagnosis_max_tokens" in result:
+        diagnosis_cap = _positive_int(
+            result["diagnosis_max_tokens"], "diagnosis_max_tokens",
+            error_type=LiveConfigError,
+        )
+        if diagnosis_cap > result["max_tokens"]:
+            raise LiveConfigError(
+                "diagnosis_max_tokens exceeds max_tokens", condition="diagnosis_max_tokens"
+            )
     return result
 
 
