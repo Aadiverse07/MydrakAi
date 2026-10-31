@@ -1,0 +1,7 @@
+# Public access refuses to start until every value is supplied and reviewed.
+# These are configuration keys only; this example intentionally supplies no limits.
+per_user_daily_requests: null
+global_daily_requests: null
+global_spend_cap_usd: null
+max_photo_bytes: null
+min_seconds_between_requests_per_user: null

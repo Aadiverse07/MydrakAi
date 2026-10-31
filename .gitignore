@@ -34,6 +34,8 @@ build/
 *.sqlite
 *.sqlite3
 *.sqlite*
+.mydrak-bot-limits.sqlite3
+config/bot_limits.yaml
 
 # Personal data: private farmer images, audio, video, or local uploads.
 farmer_images/
