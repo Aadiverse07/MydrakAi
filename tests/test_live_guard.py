@@ -2,10 +2,13 @@
 
 from decimal import Decimal
 import argparse
+from pathlib import Path
 
 import pytest
 
-from mydrak.live.guard import LiveGuardError, add_live_arguments, reserve_live_call
+from mydrak.live.guard import (
+    LiveGuardError, add_live_arguments, load_live_provider_config, reserve_live_call,
+)
 from mydrak.live.retry import call_with_retries
 from mydrak.privacy.data_policy import (
     DataClass, DataPolicy, DataPolicyError, ProcessingEvidence, ProviderMode,
@@ -156,3 +159,54 @@ def test_cli_live_switches_are_explicit_and_default_off():
     enabled = parser.parse_args(["--live-authorized", "--max-spend-usd", "0.25"])
     assert enabled.live_authorized is True
     assert enabled.max_spend_usd == "0.25"
+
+
+def test_config_loader_accepts_numeric_prices_without_claiming_verification(tmp_path):
+    config_path = tmp_path / "models.yaml"
+    config_path.write_text(
+        "tier1:\n  model_id: example\n  endpoint: https://example.test/v1\n"
+        "  timeout_s: 3\n  max_tokens: 12\n"
+        "  price_input_per_1m: 0.35\n  price_output_per_1m: 1.5\n"
+        "glimmer_host:\n  choice: together\n",
+        encoding="utf-8",
+    )
+    loaded = load_live_provider_config(config_path, "tier1")
+    assert loaded["price_input_per_1m"] == 0.35
+    assert loaded["price_output_per_1m"] == 1.5
+
+
+def test_config_loader_rejects_todo_placeholder_with_clear_error(tmp_path):
+    config_path = tmp_path / "models.yaml"
+    config_path.write_text(
+        "tier1:\n  model_id: TODO(verify)\n  endpoint: https://example.test/v1\n"
+        "  timeout_s: 3\n  max_tokens: 12\n"
+        "  price_input_per_1m: 0.35\n  price_output_per_1m: 1.5\n"
+        "glimmer_host:\n  choice: together\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(LiveGuardError, match="unresolved TODO"):
+        load_live_provider_config(config_path, "tier1")
+
+
+def test_current_config_has_no_output_bound_and_guard_refuses(tmp_path):
+    repository_config = Path(__file__).resolve().parents[1] / "config" / "models.yaml"
+    tier1 = load_live_provider_config(repository_config, "tier1")
+    assert tier1["max_tokens"] > 0
+    with pytest.raises(LiveGuardError, match="maximum input tokens"):
+        reserve(
+            tmp_path,
+            config=tier1 | {
+                "price_input_per_1m": tier1["price_input_per_1m"],
+                "price_output_per_1m": tier1["price_output_per_1m"],
+                "max_input_tokens": None,
+                "max_output_tokens": tier1["max_tokens"],
+            },
+        )
+
+
+@pytest.mark.parametrize("provider", ["tier1", "tier2", "sam", "voice"])
+def test_populated_provider_sections_load_but_remain_unverified(provider):
+    repository_config = Path(__file__).resolve().parents[1] / "config" / "models.yaml"
+    section = load_live_provider_config(repository_config, provider)
+    assert section["model_id"]
+    assert section["endpoint"].startswith("https://")

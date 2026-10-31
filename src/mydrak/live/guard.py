@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+import yaml
+
 
 class LiveGuardError(ValueError):
     """Live execution is not sufficiently authorized or budgeted."""
@@ -29,6 +31,67 @@ class SpendReservation:
 
 
 DEFAULT_SPEND_LEDGER = Path(".mydrak-spend-ledger.sqlite3")
+_PROVIDER_FIELDS = {
+    "tier1": ("model_id", "endpoint", "timeout_s", "max_tokens",
+              "price_input_per_1m", "price_output_per_1m"),
+    "tier2": ("model_id", "model_id_contributor", "endpoint", "timeout_s",
+              "max_tokens", "price_input_per_1m", "price_output_per_1m"),
+    "voice": ("model_id", "endpoint", "timeout_s", "price_per_1k_minutes"),
+    "sam": ("model_id", "endpoint", "timeout_s", "price_per_1k_images"),
+}
+
+
+def load_live_provider_config(path: str | Path, provider: str) -> dict[str, Any]:
+    """Load and structurally validate one provider section without networking.
+
+    This verifies presence, primitive types, and unresolved placeholders only;
+    it does not verify the source, account entitlement, or compatibility of
+    user-supplied values. Provider-specific payload contracts remain separate.
+    """
+    if provider not in _PROVIDER_FIELDS:
+        raise LiveGuardError("provider section is unsupported")
+    try:
+        document = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, yaml.YAMLError):
+        raise LiveGuardError("provider configuration could not be loaded") from None
+    if not isinstance(document, Mapping):
+        raise LiveGuardError("provider configuration must be a mapping")
+    section = document.get(provider)
+    if not isinstance(section, Mapping):
+        raise LiveGuardError("provider configuration section is missing")
+    result = dict(section)
+    if _contains_todo(result):
+        raise LiveGuardError("provider configuration contains an unresolved TODO(verify)")
+    for field in _PROVIDER_FIELDS[provider]:
+        if field not in result:
+            raise LiveGuardError(f"provider configuration field {field} is missing")
+        value = result[field]
+        if isinstance(value, str) and "TODO" in value.upper():
+            raise LiveGuardError(f"provider configuration field {field} is unresolved")
+        if field in {"model_id", "model_id_contributor", "endpoint"}:
+            _clean_config_text(value, field)
+        elif field == "timeout_s":
+            _positive_decimal(value, "timeout")
+        elif field == "max_tokens":
+            _positive_int(value, "max_tokens")
+        elif field.startswith("price_"):
+            _nonnegative_decimal(value, field)
+    if provider == "tier1":
+        host = document.get("glimmer_host")
+        if not isinstance(host, Mapping):
+            raise LiveGuardError("Glimmer host configuration is missing")
+        _clean_config_text(host.get("choice"), "Glimmer host")
+    return result
+
+
+def _contains_todo(value: Any) -> bool:
+    if isinstance(value, str):
+        return "TODO" in value.upper()
+    if isinstance(value, Mapping):
+        return any(_contains_todo(item) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_contains_todo(item) for item in value)
+    return False
 
 
 def add_live_arguments(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:

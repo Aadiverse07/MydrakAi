@@ -44,11 +44,14 @@ The shared Phase 9 guard foundation requires a future caller to supply
 `--live-authorized`, `MYDRAK_LIVE=1`, a positive `--max-spend-usd`, a local
 ignored spend-ledger file, a credential environment variable, verified model
 configuration, explicit input/output token bounds, and known prices before a
-call can be budgeted. The repository's current `config/models.yaml` still has
-`TODO(verify)` model IDs, endpoints, prices, and timeouts, and only an
-ambiguous `max_tokens` field. No caller is connected to this gate, and no
-live call is authorized by these setup notes. A local spend reservation is an
-estimate, not a provider billing cap or guarantee against charges.
+call can be budgeted. `config/models.yaml` now contains user-supplied IDs,
+endpoints, prices, and timeouts, but these remain UNVERIFIED until a separately
+authorized smoke test succeeds. It has only one `max_tokens` field, so
+worst-case input-token cost is unknown and the gate refuses. No provider caller
+is connected. No live call is authorized by these setup notes. A local spend
+reservation is an estimate, not a provider billing cap or guarantee against
+charges. Tier 1's Together key variable is `TOGETHER_API_KEY`; Meta API
+credentials use `META_API_KEY`. Neither is loaded from `.env` by this code.
 
 The user reports approximately $97.40 in API credits and reserves at least $50
 for judging/final demo; these account figures are unverified, making $47.40 an

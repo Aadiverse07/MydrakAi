@@ -22,8 +22,12 @@ def test_severity_config_loads():
 
 def test_models_config_is_explicitly_unverified():
     cfg = load_yaml(REPO_ROOT / "config" / "models.yaml")
-    assert cfg["tier1"]["model_id"].startswith("TODO(verify)")
-    assert cfg["tier2"]["model_id"].startswith("TODO(verify)")
+    text = (REPO_ROOT / "config" / "models.yaml").read_text(encoding="utf-8")
+    assert text.startswith("# UNVERIFIED until a smoke test passes.")
+    assert cfg["tier1"]["model_id"]
+    assert cfg["tier2"]["model_id"]
+    assert isinstance(cfg["tier1"]["price_input_per_1m"], (int, float))
+    assert isinstance(cfg["tier2"]["price_output_per_1m"], (int, float))
 
 
 def test_load_yaml_rejects_non_mapping(tmp_path):
@@ -37,3 +41,4 @@ def test_env_example_defaults_data_policy_to_private():
     env_example = (REPO_ROOT / ".env.example").read_text(encoding="utf-8")
     assert "DATA_POLICY=private" in env_example
     assert "DATA_POLICY=public_test" not in env_example
+    assert "TOGETHER_API_KEY=" in env_example

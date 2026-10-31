@@ -45,6 +45,24 @@ possible upper bound for development. The user must set the first live-test cap.
 Live calls require separate authorization and all account, billing, privacy,
 provider, and compatibility gates. No live test is authorized here.
 
+## Offline follow-up (2026-10-31)
+
+Follow-up files: `src/mydrak/live/guard.py`, `tests/test_live_guard.py`,
+`.env.example`, `README.md`, this roadmap, `docs/DAILY_LOG.md`, and this log.
+
+The worktree now contains user-supplied values in `config/models.yaml`; that
+pre-existing modification was preserved and was not staged. IDs, endpoints,
+prices, and timeouts remain UNVERIFIED. Added a config loader that accepts
+numeric prices and rejects missing or `TODO(verify)` fields. Tests demonstrate
+that the single `max_tokens` field cannot establish separate maximum
+input/output token costs, so the reservation gate refuses a call. Added only a
+blank `TOGETHER_API_KEY=` line to `.env.example` for future tier-1 setup.
+
+Provider-specific clients and smoke scripts remain unimplemented because the
+request/response contracts (especially Glimmer provider, Spark body, Voice
+multipart fields, and Telegram wire API) are not evidenced in the repository.
+No endpoint was contacted. Live SAM remains NO-GO.
+
 ## Status
 
 This is partial Phase 9 groundwork, not provider-client completion. T02 remains
