@@ -489,3 +489,9 @@
 
 - What changed: the shared Glimmer/Spark smoke runner now emits one safe, machine-readable failure category and `request_sent` state. Guard refusals include the specific gate condition; missing keys and invalid config are distinct. Network errors, timeouts, HTTP statuses, invalid response envelopes, and invalid diagnosis schemas are separately categorized. HTTP output includes only the numeric status and standard reason phrase; response bodies, headers, request data, credentials, and exception text are suppressed.
 - Verification: offline mocked-transport tests cover each category for both scripts where shared, request-sent behavior, retry exhaustion, HTTP reason sanitization, and successful safe reporting. Exact results are in the session log. No live script was run.
+
+## 2026-10-31 — User-reported Spark smoke result
+
+- What was reported: the user ran the Spark smoke with the standard/non-Contributor model and a `$0.25` cap. Output: `status=response_received`, `request_sent=true`, `latency_ms=7944`, `tokens_in=154`, `tokens_out=1632`, and `estimated_cost_usd=0.0071285`. This is user-reported evidence; Codex did not rerun the live request. The smoke's `response_received` status means the script accepted the returned diagnosis schema under its configured validator, according to the current code.
+- Interpretation: 1632 output tokens is close to the configured tier-2 maximum of 2048. The reported estimated cost is below the `$0.25` spend cap; the output-token maximum and spend cap are different controls. Glimmer was not tested because Together credit was unavailable. Voice, Telegram, and SAM remain unverified. T02 remains PARTIAL.
+- No model configuration values were changed. No live request was made by Codex. Details are recorded in `docs/muse-code-log/p9b-spark-live-smoke-reported.md`.
