@@ -22,8 +22,8 @@ GOOD_CONFIG = {
     "model_id": "test-model",
     "endpoint": "https://api.example.test/v1/call",
     "timeout_s": 10,
-    "max_input_tokens": 1000,
-    "max_output_tokens": 1000,
+    "max_input_tokens_estimate": 1000,
+    "max_tokens": 1000,
     "price_input_per_1m": "2.00",
     "price_output_per_1m": "4.00",
 }
@@ -51,9 +51,8 @@ def reserve(tmp_path, **overrides):
         ({"max_spend_usd": None}, "spend-usd"),
         ({"max_spend_usd": 0}, "greater than zero"),
         ({"max_spend_usd": -1}, "invalid"),
-        ({"config": GOOD_CONFIG | {"max_input_tokens": None}}, "input tokens"),
-        ({"config": GOOD_CONFIG | {"max_output_tokens": None}}, "output tokens"),
-        ({"config": GOOD_CONFIG | {"max_tokens": 1000} | {"max_input_tokens": None}}, "input tokens"),
+        ({"config": GOOD_CONFIG | {"max_input_tokens_estimate": None}}, "input tokens estimate"),
+        ({"config": GOOD_CONFIG | {"max_tokens": None}}, "output tokens"),
         ({"config": GOOD_CONFIG | {"model_id": "TODO(verify)"}}, "unresolved"),
         ({"config": GOOD_CONFIG | {"endpoint": "http://api.example.test"}}, "endpoint"),
         ({"config": GOOD_CONFIG | {"timeout_s": "TODO(verify)"}}, "timeout"),
@@ -165,7 +164,7 @@ def test_config_loader_accepts_numeric_prices_without_claiming_verification(tmp_
     config_path = tmp_path / "models.yaml"
     config_path.write_text(
         "tier1:\n  model_id: example\n  endpoint: https://example.test/v1\n"
-        "  timeout_s: 3\n  max_tokens: 12\n"
+        "  timeout_s: 3\n  max_tokens: 12\n  max_input_tokens_estimate: 99\n"
         "  price_input_per_1m: 0.35\n  price_output_per_1m: 1.5\n"
         "glimmer_host:\n  choice: together\n",
         encoding="utf-8",
@@ -173,6 +172,19 @@ def test_config_loader_accepts_numeric_prices_without_claiming_verification(tmp_
     loaded = load_live_provider_config(config_path, "tier1")
     assert loaded["price_input_per_1m"] == 0.35
     assert loaded["price_output_per_1m"] == 1.5
+
+
+def test_config_loader_requires_input_token_estimate(tmp_path):
+    config_path = tmp_path / "models.yaml"
+    config_path.write_text(
+        "tier1:\n  model_id: example\n  endpoint: https://example.test/v1\n"
+        "  timeout_s: 3\n  max_tokens: 12\n"
+        "  price_input_per_1m: 0.35\n  price_output_per_1m: 1.5\n"
+        "glimmer_host:\n  choice: together\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(LiveGuardError, match="max_input_tokens_estimate is missing"):
+        load_live_provider_config(config_path, "tier1")
 
 
 def test_config_loader_rejects_todo_placeholder_with_clear_error(tmp_path):
@@ -188,20 +200,22 @@ def test_config_loader_rejects_todo_placeholder_with_clear_error(tmp_path):
         load_live_provider_config(config_path, "tier1")
 
 
-def test_current_config_has_no_output_bound_and_guard_refuses(tmp_path):
+def test_current_config_estimate_bounds_worst_case_cost(tmp_path):
     repository_config = Path(__file__).resolve().parents[1] / "config" / "models.yaml"
     tier1 = load_live_provider_config(repository_config, "tier1")
     assert tier1["max_tokens"] > 0
-    with pytest.raises(LiveGuardError, match="maximum input tokens"):
-        reserve(
-            tmp_path,
-            config=tier1 | {
-                "price_input_per_1m": tier1["price_input_per_1m"],
-                "price_output_per_1m": tier1["price_output_per_1m"],
-                "max_input_tokens": None,
-                "max_output_tokens": tier1["max_tokens"],
-            },
-        )
+    reservation = reserve(tmp_path, config=tier1)
+    expected = (
+        Decimal(tier1["max_input_tokens_estimate"]) * Decimal(str(tier1["price_input_per_1m"]))
+        + Decimal(tier1["max_tokens"]) * Decimal(str(tier1["price_output_per_1m"]))
+    ) / Decimal(1_000_000)
+    assert reservation.estimated_usd == expected
+
+
+def test_missing_input_token_estimate_refuses_before_ledger_write(tmp_path):
+    with pytest.raises(LiveGuardError, match="maximum input tokens estimate"):
+        reserve(tmp_path, config=GOOD_CONFIG | {"max_input_tokens_estimate": None})
+    assert not (tmp_path / ".mydrak-spend-ledger.sqlite3").exists()
 
 
 @pytest.mark.parametrize("provider", ["tier1", "tier2", "sam", "voice"])

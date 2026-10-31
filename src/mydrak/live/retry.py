@@ -15,6 +15,7 @@ def call_with_retries(
     *,
     retry_delays_s: Sequence[float],
     sleep: Callable[[float], None],
+    retry_on: tuple[type[Exception], ...] = (Exception,),
 ) -> T:
     """Retry an injected operation at most twice, then use its safe fallback.
 
@@ -23,6 +24,9 @@ def call_with_retries(
     """
     if not callable(operation) or not callable(fallback) or not callable(sleep):
         raise ValueError("operation, fallback, and sleep must be callable")
+    if (not isinstance(retry_on, tuple) or not retry_on
+            or any(not isinstance(item, type) or not issubclass(item, Exception) for item in retry_on)):
+        raise ValueError("retry_on must contain exception classes")
     if not isinstance(retry_delays_s, (tuple, list)) or len(retry_delays_s) > 2:
         raise ValueError("retry schedule must contain zero to two delays")
     delays: list[float] = []
@@ -34,7 +38,9 @@ def call_with_retries(
     for attempt in range(len(delays) + 1):
         try:
             return operation()
-        except Exception:
+        except Exception as exc:
+            if not isinstance(exc, retry_on):
+                raise
             if attempt == len(delays):
                 return fallback()
             sleep(delays[attempt])

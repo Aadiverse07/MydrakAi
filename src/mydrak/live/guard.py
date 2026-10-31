@@ -33,9 +33,11 @@ class SpendReservation:
 DEFAULT_SPEND_LEDGER = Path(".mydrak-spend-ledger.sqlite3")
 _PROVIDER_FIELDS = {
     "tier1": ("model_id", "endpoint", "timeout_s", "max_tokens",
+              "max_input_tokens_estimate",
               "price_input_per_1m", "price_output_per_1m"),
     "tier2": ("model_id", "model_id_contributor", "endpoint", "timeout_s",
-              "max_tokens", "price_input_per_1m", "price_output_per_1m"),
+              "max_tokens", "max_input_tokens_estimate",
+              "price_input_per_1m", "price_output_per_1m"),
     "voice": ("model_id", "endpoint", "timeout_s", "price_per_1k_minutes"),
     "sam": ("model_id", "endpoint", "timeout_s", "price_per_1k_images"),
 }
@@ -74,6 +76,8 @@ def load_live_provider_config(path: str | Path, provider: str) -> dict[str, Any]
             _positive_decimal(value, "timeout")
         elif field == "max_tokens":
             _positive_int(value, "max_tokens")
+        elif field == "max_input_tokens_estimate":
+            _positive_int(value, "max_input_tokens_estimate")
         elif field.startswith("price_"):
             _nonnegative_decimal(value, field)
     if provider == "tier1":
@@ -118,11 +122,10 @@ def reserve_live_call(
 ) -> SpendReservation:
     """Validate every gate and atomically reserve one worst-case token cost.
 
-    Separate input and output token bounds must exist in the provider mapping;
-    the current config only has an ambiguously named ``max_tokens`` field. A
-    missing bound or price is unknown and blocks authorization. The env mapping
-    is injected by callers; this function neither reads nor retains credential
-    values.
+    The configured input-token estimate and output-token maximum are both
+    required. A missing bound or price is unknown and blocks authorization.
+    The env mapping is injected by callers; this function neither reads nor
+    retains credential values.
     """
     if cli_authorized is not True:
         raise LiveGuardError("explicit --live-authorized flag is required")
@@ -147,8 +150,10 @@ def reserve_live_call(
     timeout = _positive_decimal(config.get("timeout_s"), "timeout")
     del timeout  # Validated here; the future transport must apply this value.
 
-    tokens_in = _positive_int(config.get("max_input_tokens"), "maximum input tokens")
-    tokens_out = _positive_int(config.get("max_output_tokens"), "maximum output tokens")
+    tokens_in = _positive_int(
+        config.get("max_input_tokens_estimate"), "maximum input tokens estimate"
+    )
+    tokens_out = _positive_int(config.get("max_tokens"), "maximum output tokens")
     input_price = _nonnegative_decimal(config.get("price_input_per_1m"), "input price")
     output_price = _nonnegative_decimal(config.get("price_output_per_1m"), "output price")
     estimate = (

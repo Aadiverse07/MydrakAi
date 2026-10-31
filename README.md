@@ -37,21 +37,23 @@ python3 -m pytest
 
 Copy `.env.example` to `.env` when later phases need keys. Never commit `.env`.
 
-## Live provider gate (not enabled)
+## Live provider gate (code exists; live use is not authorized)
 
-Live provider clients and smoke scripts are not available in this offline build.
-The shared Phase 9 guard foundation requires a future caller to supply
-`--live-authorized`, `MYDRAK_LIVE=1`, a positive `--max-spend-usd`, a local
-ignored spend-ledger file, a credential environment variable, verified model
-configuration, explicit input/output token bounds, and known prices before a
-call can be budgeted. `config/models.yaml` now contains user-supplied IDs,
-endpoints, prices, and timeouts, but these remain UNVERIFIED until a separately
-authorized smoke test succeeds. It has only one `max_tokens` field, so
-worst-case input-token cost is unknown and the gate refuses. No provider caller
-is connected. No live call is authorized by these setup notes. A local spend
-reservation is an estimate, not a provider billing cap or guarantee against
-charges. Tier 1's Together key variable is `TOGETHER_API_KEY`; Meta API
-credentials use `META_API_KEY`. Neither is loaded from `.env` by this code.
+Offline code now includes explicitly constructed Glimmer (Together) and Spark
+(Meta) clients plus one-request smoke CLIs. They accept only user-supplied
+provider contract notes in `docs/providers/`; those notes, model IDs, endpoints,
+prices, timeouts, and account access remain UNVERIFIED. No smoke request was
+run. The clients require `--live-authorized`, `MYDRAK_LIVE=1`, a positive
+`--max-spend-usd`, a persistent ignored spend ledger, the appropriate credential
+environment variable, configured input-token estimate and output-token maximum,
+and known prices before dispatch. The tier-1 and tier-2 `max_input_tokens_estimate`
+values in `config/models.yaml` are user supplied and unverified. A local
+worst-case reservation is an estimate, not a provider billing cap or guarantee
+against charges. Together credentials use `TOGETHER_API_KEY`; Meta credentials
+use `META_API_KEY`. Neither is loaded from `.env` by this code. The offline
+workflow and replay remain disconnected from live clients and never fall back
+to them. Any live request still requires separate user authorization and all
+eligibility, billing, privacy, retention, and compatibility gates.
 
 The user reports approximately $97.40 in API credits and reserves at least $50
 for judging/final demo; these account figures are unverified, making $47.40 an
