@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
 import uuid
 
 from mydrak.telegram.client import TelegramClientError
@@ -11,6 +13,16 @@ from mydrak.trace.store import TraceCase, TraceStep
 
 class TelegramDelivery:
     """Mixin for runner state; never stores message text or raw IDs."""
+
+    def _retry_operation(self, operation: Callable[[], Any]) -> Any:
+        for attempt in range(3):
+            try:
+                return operation()
+            except TelegramClientError:
+                if attempt == 2:
+                    raise
+                self.sleep(0.1 * (2 ** attempt))
+        raise TelegramClientError("Telegram operation failed")
 
     def _send(self, chat_id: int | str, user_hash: str, text: str,
               outcome: str, *, photo: bytes | None = None) -> RunnerOutcome:

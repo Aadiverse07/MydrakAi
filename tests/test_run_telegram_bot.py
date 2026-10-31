@@ -60,7 +60,7 @@ def test_guard_error_output_never_contains_synthetic_bot_token(tmp_path):
         output=lambda _: None, stderr=errors,
     )
     assert result == 2
-    assert secret not in errors.getvalue()
+    assert secret not in errors.getvalue(), "token leaked from startup error output"
 
 
 @pytest.mark.parametrize("authorized,environ,cap,ledger", [

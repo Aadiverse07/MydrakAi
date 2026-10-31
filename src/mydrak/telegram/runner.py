@@ -1,9 +1,4 @@
-"""Hash-first Telegram orchestration over normalized updates.
-
-The supplied Bot API excerpt does not define raw Update nesting. This runner
-accepts only a project-local normalized record; live parsing remains blocked
-until the response contract is documented.
-"""
+"""Hash-first Telegram orchestration over parsed, documented Bot API updates."""
 
 from __future__ import annotations
 
@@ -26,14 +21,15 @@ from mydrak.telegram.config import AccessMode, PublicLimits
 from mydrak.telegram.delivery import TelegramDelivery
 from mydrak.telegram.limits import PublicLimitStore
 from mydrak.telegram.updates import (
-    NormalizedTelegramUpdate, RunnerOutcome, digest_id, valid_normalized_update,
+    NormalizedTelegramUpdate, RunnerOutcome, SkippedTelegramUpdate,
+    digest_id, valid_normalized_update,
 )
 from mydrak.trace.store import TraceStore
 from mydrak.workflow.modes import run_pipeline_mode
 
 
 class TelegramBotRunner(TelegramDelivery):
-    """Run explicit normalized updates; never parse undocumented API mappings."""
+    """Run defensively normalized updates while preserving privacy and access gates."""
 
     def __init__(
         self, *, client: TelegramClient, trace_store: TraceStore,
@@ -119,17 +115,21 @@ class TelegramBotRunner(TelegramDelivery):
                         )
                     )
                 except TelegramClientError:
-                    # urllib exceptions can contain token-bearing URLs.
                     return 2
                 for update in updates:
+                    if isinstance(update, SkippedTelegramUpdate):
+                        if update.update_id is None:
+                            return 2
+                        if offset is None or update.update_id >= offset:
+                            offset = update.update_id + 1
+                        continue
                     if type(update) is not NormalizedTelegramUpdate:
-                        # Raw Update nesting is not present in the supplied
-                        # documentation. Stop rather than poll an unknown
-                        # response indefinitely or guess field mappings.
                         return 2
-                    if not valid_normalized_update(update):
+                    if offset is not None and update.update_id < offset:
                         continue
                     offset = update.update_id + 1
+                    if not valid_normalized_update(update):
+                        continue
                     try:
                         self.handle_update(update)
                     except Exception:
@@ -242,7 +242,11 @@ class TelegramBotRunner(TelegramDelivery):
             if not update.photo_file_id:
                 raise TelegramClientError("photo file reference unavailable")
             file = self._retry_operation(lambda: self.client.get_file(update.photo_file_id))
-            if file.file_size != update.photo_size or file.file_size > max_bytes:
+            if (
+                (file.file_size is not None and file.file_size != update.photo_size)
+                or update.photo_size > max_bytes
+                or (file.file_size is not None and file.file_size > max_bytes)
+            ):
                 self._trace(user_hash, "telegram_photo", "file_size_limit", "retake")
                 return self._send(
                     update.chat_id, user_hash, telegram_message("limited"), "photo_size_limit"
@@ -287,13 +291,3 @@ class TelegramBotRunner(TelegramDelivery):
             return self._send(
                 update.chat_id, user_hash, telegram_message("photo_blocked"), "workflow_failed"
             )
-
-    def _retry_operation(self, operation: Callable[[], Any]) -> Any:
-        for attempt in range(3):
-            try:
-                return operation()
-            except TelegramClientError:
-                if attempt == 2:
-                    raise
-                self.sleep(0.1 * (2 ** attempt))
-        raise TelegramClientError("Telegram operation failed")

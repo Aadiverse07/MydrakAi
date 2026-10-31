@@ -1,9 +1,4 @@
-"""Offline-testable Telegram method boundary.
-
-The repository's provider excerpt lists method fields but omits HTTP request
-encoding and nested response schemas. The default transport therefore refuses
-wire dispatch; injected tests can exercise the documented method contract.
-"""
+"""Telegram Bot API client with bounded validation and redacted credentials."""
 
 from __future__ import annotations
 
@@ -12,25 +7,34 @@ from dataclasses import dataclass
 import os
 from typing import Any, Protocol
 
+from mydrak.telegram.updates import NormalizedTelegramUpdate, SkippedTelegramUpdate, parse_updates
+
+MAX_PHOTO_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_FILE_DOWNLOAD_BYTES = 20 * 1024 * 1024
+
 
 class TelegramClientError(RuntimeError):
-    """Sanitized Telegram client error; never contains token or response text."""
+    """Safe client failure; messages must not include request or response data."""
 
 
-class TelegramContractUnverified(TelegramClientError):
-    """Wire serialization is blocked pending documented request/response shapes."""
+class TelegramApiError(TelegramClientError):
+    """Telegram returned an ``ok: false`` wrapper; description is suppressed."""
+
+
+class TelegramTimeoutError(TelegramClientError):
+    """A Telegram HTTP operation timed out."""
+
+
+class TelegramResponseError(TelegramClientError):
+    """Telegram returned invalid JSON or an invalid response wrapper."""
 
 
 @dataclass(frozen=True)
 class TelegramFile:
-    """Project-local normalized File supplied by offline tests only.
-
-    Mapping the Bot API File object is TODO(verify): the provided excerpt does
-    not document its response fields or envelope.
-    """
+    """Validated fields consumed from the documented Bot API File object."""
 
     file_path: str
-    file_size: int
+    file_size: int | None
 
 
 class TelegramTransport(Protocol):
@@ -38,22 +42,8 @@ class TelegramTransport(Protocol):
     def download(self, file_path: str, *, max_bytes: int, timeout_s: float) -> bytes: ...
 
 
-class UnverifiedTelegramTransport:
-    """Fail-closed default; it never opens a socket."""
-
-    def call(self, method: str, parameters: Mapping[str, Any], *, timeout_s: float) -> Any:
-        raise TelegramContractUnverified(
-            "TODO(verify): Telegram HTTP method, body encoding, and response envelope are undocumented"
-        )
-
-    def download(self, file_path: str, *, max_bytes: int, timeout_s: float) -> bytes:
-        raise TelegramContractUnverified(
-            "TODO(verify): Telegram File response schema and download transport are undocumented"
-        )
-
-
 class TelegramClient:
-    """Build documented Telegram method parameters without exposing its token."""
+    """Build documented method parameters and sanitize all transport failures."""
 
     def __init__(self, token: str, *, transport: TelegramTransport | None = None,
                  timeout_s: float = 30.0) -> None:
@@ -61,10 +51,10 @@ class TelegramClient:
             raise TelegramClientError("Telegram bot token is missing or malformed")
         if isinstance(timeout_s, bool) or not isinstance(timeout_s, (int, float)) or timeout_s <= 0:
             raise TelegramClientError("Telegram timeout is invalid")
-        # The provider excerpt does not document authenticated wire
-        # serialization, so this boundary validates but never retains the
-        # credential. The fail-closed default cannot dispatch requests.
-        self._transport = transport or UnverifiedTelegramTransport()
+        if transport is None:
+            from mydrak.telegram.http_transport import TelegramHttpTransport
+            transport = TelegramHttpTransport(token)
+        self._transport = transport
         self._timeout_s = float(timeout_s)
 
     @classmethod
@@ -81,7 +71,8 @@ class TelegramClient:
         return "TelegramClient(token=<redacted>)"
 
     def get_updates(self, *, offset: int | None = None, limit: int = 100,
-                    timeout: int = 25, allowed_updates: Sequence[str] | None = None) -> list[Any]:
+                    timeout: int = 25, allowed_updates: Sequence[str] | None = None
+                    ) -> list[NormalizedTelegramUpdate | SkippedTelegramUpdate]:
         if offset is not None and (type(offset) is not int or offset < 0):
             raise TelegramClientError("Telegram update offset is invalid")
         if type(limit) is not int or not 1 <= limit <= 100:
@@ -99,8 +90,8 @@ class TelegramClient:
             params["allowed_updates"] = list(allowed_updates)
         result = self._call("getUpdates", params)
         if not isinstance(result, list):
-            raise TelegramContractUnverified("TODO(verify): getUpdates response envelope/schema is not recorded")
-        return result
+            raise TelegramResponseError("Telegram getUpdates result is invalid")
+        return parse_updates(result)
 
     def send_message(self, chat_id: int | str, text: str) -> Any:
         _validate_chat_id(chat_id)
@@ -112,7 +103,7 @@ class TelegramClient:
         _validate_chat_id(chat_id)
         if not isinstance(photo, (bytes, str)) or not photo:
             raise TelegramClientError("Telegram photo input is invalid")
-        if isinstance(photo, bytes) and len(photo) > 10 * 1024 * 1024:
+        if isinstance(photo, bytes) and len(photo) > MAX_PHOTO_UPLOAD_BYTES:
             raise TelegramClientError("Telegram photo exceeds the documented 10 MB limit")
         if isinstance(photo, str) and len(photo) > 4096:
             raise TelegramClientError("Telegram photo reference is too long")
@@ -123,44 +114,71 @@ class TelegramClient:
             params["caption"] = caption
         return self._call("sendPhoto", params)
 
-    def get_file(self, file_id: str) -> Any:
+    def get_file(self, file_id: str) -> TelegramFile:
         if not isinstance(file_id, str) or not file_id.strip() or len(file_id) > 4096:
             raise TelegramClientError("Telegram file identifier is invalid")
         result = self._call("getFile", {"file_id": file_id})
-        if type(result) is not TelegramFile:
-            raise TelegramContractUnverified(
-                "TODO(verify): getFile response envelope and File field mapping are not recorded"
-            )
+        if not isinstance(result, Mapping):
+            raise TelegramResponseError("Telegram getFile result is invalid")
+        file_id, unique_id = result.get("file_id"), result.get("file_unique_id")
+        path = result.get("file_path")
+        size = result.get("file_size")
         if (
-            not isinstance(result.file_path, str) or not result.file_path
-            or len(result.file_path) > 1024
-            or type(result.file_size) is not int or not 1 <= result.file_size <= 20 * 1024 * 1024
+            not isinstance(file_id, str) or not file_id.strip() or len(file_id) > 4096
+            or not isinstance(unique_id, str) or not unique_id.strip() or len(unique_id) > 4096
+            or not isinstance(path, str) or not path or len(path) > 1024
+            or (size is not None and (type(size) is not int or not 1 <= size <= MAX_FILE_DOWNLOAD_BYTES))
         ):
-            raise TelegramClientError("Telegram file metadata is invalid")
-        return result
+            raise TelegramResponseError("Telegram file metadata is invalid")
+        return TelegramFile(path, size)
 
     def download_file(self, file_path: str, *, max_bytes: int) -> bytes:
         if not isinstance(file_path, str) or not file_path or len(file_path) > 1024:
             raise TelegramClientError("Telegram file path is invalid")
-        if type(max_bytes) is not int or not 1 <= max_bytes <= 20 * 1024 * 1024:
+        if type(max_bytes) is not int or not 1 <= max_bytes <= MAX_FILE_DOWNLOAD_BYTES:
             raise TelegramClientError("Telegram download bound is invalid")
+        failure: str | None = None
+        data = b""
         try:
             data = self._transport.download(file_path, max_bytes=max_bytes, timeout_s=self._timeout_s)
-        except TelegramClientError:
-            raise
+        except TimeoutError:
+            failure = "timeout"
+        except TelegramTimeoutError:
+            failure = "timeout"
         except Exception:
-            raise TelegramClientError("Telegram file download failed") from None
+            failure = "download"
+        if failure == "timeout":
+            raise TelegramTimeoutError("Telegram file download timed out")
+        if failure:
+            raise TelegramClientError("Telegram file download failed")
         if not isinstance(data, bytes) or len(data) > max_bytes:
-            raise TelegramClientError("Telegram file download exceeded its bound")
+            raise TelegramResponseError("Telegram file download exceeded its bound")
         return data
 
     def _call(self, method: str, parameters: Mapping[str, Any]) -> Any:
+        failure: str | None = None
+        result: Any = None
         try:
-            return self._transport.call(method, dict(parameters), timeout_s=self._timeout_s)
-        except TelegramClientError:
-            raise
+            result = self._transport.call(method, dict(parameters), timeout_s=self._timeout_s)
+        except TimeoutError:
+            failure = "timeout"
+        except TelegramTimeoutError:
+            failure = "timeout"
+        except TelegramApiError:
+            failure = "api"
+        except TelegramResponseError:
+            failure = "response"
         except Exception:
-            raise TelegramClientError("Telegram method call failed") from None
+            failure = "request"
+        if failure == "timeout":
+            raise TelegramTimeoutError("Telegram request timed out")
+        if failure == "api":
+            raise TelegramApiError("Telegram API returned an error")
+        if failure == "response":
+            raise TelegramResponseError("Telegram response is invalid")
+        if failure:
+            raise TelegramClientError("Telegram method call failed")
+        return result
 
 
 def _validate_chat_id(value: Any) -> None:

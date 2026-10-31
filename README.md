@@ -63,18 +63,33 @@ upper bound on possible development spend. The first live-test cap must be set
 by the user, and any live call requires separate authorization after the
 account, billing, privacy, and compatibility gates are met.
 
-## Telegram runner (Phase 11; wire use remains blocked)
+## Telegram runner (Phase 11b; live run not yet confirmed)
 
-The offline runner supports `/start`, `/language`, `/help`, `/rescan` (which
-states rescan is unimplemented), private-chat and allowlist decisions, hashed
-local limits, and cached replay. It never reads `.env`; supply environment
-variables through the process or deployment environment. Restricted access
-uses `TELEGRAM_BOT_TOKEN` and comma-separated `TELEGRAM_ALLOWED_CHAT_IDS`, with
-`--live-authorized`, `MYDRAK_LIVE=1`, a positive `--max-spend-usd`, and an
-existing spend ledger. The supplied Telegram excerpt omits HTTP method/body
-encoding and raw Update/File response schemas, so the default transport refuses
-polling and sending with a `TODO(verify)` boundary. No live Telegram run is
-currently possible through this code.
+The runner supports `/start`, `/language`, `/help`, `/rescan` (which states
+rescan is unimplemented), private-chat and allowlist decisions, hashed local
+limits, and cached replay. The standard-library transport follows the request,
+response, Update/File, and download formats recorded in
+`docs/providers/telegram.md`; loopback tests cover those formats. This does not
+establish live account access or successful Telegram compatibility. T03 remains
+PARTIAL until the user confirms a live run. The runner never reads `.env`; pass
+environment variables through the process or deployment environment.
+
+For restricted access, first provide `TELEGRAM_BOT_TOKEN` and a comma-separated
+`TELEGRAM_ALLOWED_CHAT_IDS` in the process environment, then explicitly opt into
+the guarded live runner. The cap and ledger path below are operator-provided
+shell variables, not defaults:
+
+```sh
+MYDRAK_LIVE=1 python3 scripts/run_telegram_bot.py --live-authorized --max-spend-usd "$BOT_MAX_SPEND_USD" --ledger "$EXISTING_SPEND_LEDGER"
+```
+
+The script uses the existing spend ledger and Spark guard for model-call cost
+checks. A software cap is an estimate/guard, not a guarantee of zero billing.
+Use cached replay for offline operation:
+
+```sh
+python3 scripts/run_telegram_bot.py --replay synthetic-referral-01
+```
 
 Public mode also requires `--public-access` and `MYDRAK_PUBLIC=1`, plus a
 complete `config/bot_limits.yaml`. Start with `config/bot_limits.example.yaml`;
@@ -85,11 +100,18 @@ guarantee zero billing. The host must remain running. Telegram photos are
 private by default; current model config does not enable private uploads and
 the runner has no verified rights-evidence source, so photo analysis fails
 closed. Hindi remains unavailable pending review. Do not enable public access
-until wire details, privacy review, and safeguards are resolved.
+until a user-confirmed live check, privacy review, and safeguards are resolved.
+
+After all required gates are met, the public-mode invocation also needs the
+operator-filled limits file:
+
+```sh
+MYDRAK_PUBLIC=1 MYDRAK_LIVE=1 python3 scripts/run_telegram_bot.py --public-access --live-authorized --max-spend-usd "$BOT_MAX_SPEND_USD" --ledger "$EXISTING_SPEND_LEDGER" --bot-limits config/bot_limits.yaml
+```
 
 Cached offline scenarios need no Telegram token, polling, model call, or
-network: `python3 scripts/run_telegram_bot.py --replay` (or name a registered
-fixture after `--replay`).
+network. The default `--replay` fixture is `synthetic-referral-01`; only
+registered synthetic fixtures are accepted.
 
 ## Safety and honest limits
 

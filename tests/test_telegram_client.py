@@ -1,12 +1,11 @@
 """Offline tests for documented Telegram method parameters only."""
 
-import socket
-
 import pytest
 
 from mydrak.telegram.client import (
-    TelegramClient, TelegramClientError, TelegramContractUnverified, TelegramFile,
+    TelegramClient, TelegramClientError,
 )
+from mydrak.telegram.http_transport import TelegramHttpTransport
 
 
 class FakeTransport:
@@ -21,7 +20,8 @@ class FakeTransport:
         if self.failure:
             raise self.failure
         if method == "getFile":
-            return TelegramFile("synthetic/file.jpg", 5)
+            return {"file_id": "synthetic-file", "file_unique_id": "synthetic-unique",
+                    "file_path": "synthetic/file.jpg", "file_size": 5}
         return self.result
 
     def download(self, file_path, *, max_bytes, timeout_s):
@@ -70,24 +70,29 @@ def test_send_file_and_message_boundaries_are_validated_before_transport():
     assert transport.downloaded == []
 
 
-def test_environment_token_is_not_retained_in_repr_or_sanitized_error():
+def test_file_size_optional_in_documented_file_schema_is_preserved_as_unknown():
+    class FileTransport:
+        def call(self, *_args, **_kwargs):
+            return {"file_id": "fid", "file_unique_id": "uid", "file_path": "path"}
+        def download(self, *_args, **_kwargs):
+            return b"image"
+    file = TelegramClient("synthetic-token", transport=FileTransport()).get_file("fid")
+    assert file.file_size is None
+
+
+def test_environment_token_is_redacted_from_repr_and_sanitized_error():
     secret = "synthetic-token-do-not-print"
     client = TelegramClient.from_environment(environ={"TELEGRAM_BOT_TOKEN": secret})
-    assert secret not in repr(client)
-    with pytest.raises(TelegramContractUnverified) as error:
+    assert secret not in repr(client), "token leaked from client repr"
+    assert type(client._transport) is TelegramHttpTransport
+    assert secret not in repr(client._transport), "token leaked from transport repr"
+    client._transport.call = lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        RuntimeError(f"synthetic failure containing {secret}")
+    )
+    with pytest.raises(TelegramClientError) as error:
         client.get_updates()
-    assert secret not in str(error.value)
-    assert secret not in repr(error.value)
-
-
-def test_default_transport_refuses_before_any_socket(monkeypatch):
-    def blocked(*args, **kwargs):
-        raise AssertionError("offline Telegram client must not open a socket")
-    monkeypatch.setattr(socket, "create_connection", blocked)
-    monkeypatch.setattr(socket.socket, "connect", blocked)
-    client = TelegramClient("synthetic-token")
-    with pytest.raises(TelegramContractUnverified, match=r"TODO\(verify\)"):
-        client.get_updates()
+    assert secret not in str(error.value), "token leaked from exception text"
+    assert secret not in repr(error.value), "token leaked from exception repr"
 
 
 def test_method_and_download_transport_errors_are_sanitized():
@@ -97,5 +102,5 @@ def test_method_and_download_transport_errors_are_sanitized():
     client = TelegramClient(secret, transport=transport)
     with pytest.raises(TelegramClientError) as error:
         client.send_message(1, "safe")
-    assert secret not in str(error.value)
-    assert secret not in repr(error.value)
+    assert secret not in str(error.value), "token leaked from exception text"
+    assert secret not in repr(error.value), "token leaked from exception repr"

@@ -9,7 +9,7 @@ import pytest
 
 from mydrak.bot.adapter import OfflineTelegramAdapter
 from mydrak.privacy.data_policy import DataClass, ProcessingEvidence, ProviderMode
-from mydrak.telegram.client import TelegramClient, TelegramFile
+from mydrak.telegram.client import TelegramClient
 from mydrak.telegram.config import AccessMode, PublicLimits
 from mydrak.telegram.limits import PublicLimitStore
 from mydrak.telegram.runner import NormalizedTelegramUpdate, TelegramBotRunner
@@ -35,7 +35,8 @@ class FakeTransport:
                 raise RuntimeError("synthetic poll error with synthetic-token")
             return self.poll_results
         if method == "getFile":
-            return TelegramFile("synthetic/path.jpg", len(self.photo))
+            return {"file_id": "synthetic-file", "file_unique_id": "synthetic-unique",
+                    "file_path": "synthetic/path.jpg", "file_size": len(self.photo)}
         return {"ok": True}
 
     def download(self, file_path, *, max_bytes, timeout_s):
@@ -232,10 +233,10 @@ def test_text_content_is_never_echoed_or_traced(tmp_path):
     secret = "synthetic-private-symptom-text-never-store"
     result = runner.handle_update(update("text", text=secret))
     assert result.sent
-    assert secret not in result.reply
-    assert secret not in repr(result)
+    assert secret not in result.reply, "user text was echoed"
+    assert secret not in repr(result), "user text appeared in outcome repr"
     assert "sendMessage" in [call[0] for call in transport.calls]
-    assert secret not in repr(trace._connection.execute("SELECT * FROM steps").fetchall())
+    assert secret not in repr(trace._connection.execute("SELECT * FROM steps").fetchall()), "user text appeared in trace"
 
 
 def test_stop_file_halts_before_answer_and_failed_start_does_not_enable_photo(tmp_path):
