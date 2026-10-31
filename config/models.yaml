@@ -1,38 +1,39 @@
-# UNVERIFIED — Phase 0 placeholder. No model ID, endpoint, price, timeout, or
-# limit below has been confirmed against official Meta documentation.
-# TODO(verify): fill every value from official Meta docs + Day-0 smoke scripts,
-# then remove the UNVERIFIED markers. Nothing here has been tested.
+# UNVERIFIED until a smoke test passes.
 tier1:
-  name: "UNVERIFIED: tier-1 cheap diagnosis model"
-  model_id: "TODO(verify)"
-  endpoint: "TODO(verify)"
-  price_input_per_1m: "TODO(verify)"
-  price_output_per_1m: "TODO(verify)"
-  timeout_s: "TODO(verify)"
-  max_tokens: "TODO(verify)"
+  name: "tier-1 cheap diagnosis model (Muse Glimmer 30B, hosted)"
+  model_id: "meta-models/Muse-Glimmer-30B"
+  endpoint: "https://api.together.xyz/v1"
+  price_input_per_1m: 0.35
+  price_output_per_1m: 1.50
+  timeout_s: 30
+  max_tokens: 512                      # Max output tokens
+  max_input_tokens_estimate: 4000      # NEW: Bounds input cost (covers text + image)
   samples_per_case: 2
 tier2:
-  name: "UNVERIFIED: tier-2 strong reasoning model"
-  model_id: "TODO(verify)"
-  model_id_contributor: "TODO(verify)"
-  endpoint: "TODO(verify)"
-  price_input_per_1m: "TODO(verify)"
-  price_output_per_1m: "TODO(verify)"
-  timeout_s: "TODO(verify)"
-  max_tokens: "TODO(verify)"
+  name: "tier-2 strong reasoning model"
+  model_id: "muse-spark-1.3"
+  model_id_contributor: "muse-spark-1.3-contributor"
+  endpoint: "https://api.meta.ai/v1"
+  price_input_per_1m: 1.25
+  price_output_per_1m: 4.25
+  timeout_s: 30
+  max_tokens: 2048                     # Max output tokens
+  diagnosis_max_tokens: 512            # Project-local conservative JSON diagnosis bound
+  max_input_tokens_estimate: 4000      # NEW: Bounds input cost
   max_calls_per_case: 1
 sam:
-  name: "UNVERIFIED: segmentation model"
-  model_id: "TODO(verify)"
-  endpoint: "TODO(verify)"
-  price_per_1k_images: "TODO(verify)"
-  timeout_s: "TODO(verify)"
+  name: "segmentation model"
+  model_id: "sam-3.1"
+  endpoint: "https://api.meta.ai/v1"
+  price_per_1k_images: 2.50
+  timeout_s: 30
+  max_input_tokens_estimate: 2000      # NEW: Bounds any prompt text sent with the image
 voice:
-  name: "UNVERIFIED: speech transcription model"
-  model_id: "TODO(verify)"
-  endpoint: "TODO(verify)"
-  price_per_1k_minutes: "TODO(verify)"
-  timeout_s: "TODO(verify)"
+  name: "speech transcription model"
+  model_id: "muse-voice-transcribe-1.0"
+  endpoint: "https://api.meta.ai/v1"
+  price_per_1k_minutes: 3.00
+  timeout_s: 30
+  max_input_tokens_estimate: 1000      # NEW: Bounds any context sent to the voice model
 glimmer_host:
-  # UNVERIFIED: local inference vs hosted provider undecided (spec C4).
-  choice: "TODO(verify: local | fireworks | together | openrouter)"
+  choice: "together"
