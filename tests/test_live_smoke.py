@@ -22,7 +22,9 @@ def test_glimmer_smoke_refuses_without_explicit_flag_and_prints_no_payload():
     )
     assert code == 2
     assert transport.calls == 0
-    assert len(lines) == 2 and "status=refused_or_failed" in lines[0]
+    assert len(lines) == 1 and "failure_category=guard_refused" in lines[0]
+    assert "guard_condition=cli_authorization" in lines[0]
+    assert "request_sent=false" in lines[0]
     assert all("SYNTHETIC-SECRET" not in line for line in lines)
     assert all("data:image" not in line for line in lines)
 
@@ -37,5 +39,6 @@ def test_spark_smoke_refuses_by_default_and_cannot_use_contributor_privately():
     )
     assert code == 2
     assert transport.calls == 0
-    assert "status=refused_or_failed" in lines[0]
+    assert "failure_category=guard_refused" in lines[0]
+    assert "request_sent=false" in lines[0]
     assert all("SYNTHETIC-SECRET" not in line for line in lines)

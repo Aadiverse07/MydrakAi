@@ -190,7 +190,7 @@ def test_retry_timeout_then_success_is_bounded_and_traced(tmp_path):
     assert client.generate() == VALID
     assert len(transport.calls) == 3
     assert delays == [0.01, 0.02]
-    assert [step.outcome for step in trace] == ["transport_failed", "transport_failed", "completed"]
+    assert [step.outcome for step in trace] == ["timeout", "timeout", "completed"]
     assert all(SECRET not in repr(step) for step in trace)
 
 

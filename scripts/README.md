@@ -10,3 +10,7 @@ based solely on the user-supplied reference files under `docs/providers/`, and
 provider/account compatibility is UNVERIFIED. Do not invoke either script until
 the live-readiness gates have been approved and a separate live-call authorization
 is given. SAM and voice still have no live clients; Telegram has no wire client.
+Failure output has one machine-readable `failure_category` and a
+`request_sent=true|false` field. Guard failures include a safe condition ID;
+HTTP failures include only the numeric status and standard reason phrase. No
+response body, headers, request data, key, or exception text is printed.

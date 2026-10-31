@@ -22,6 +22,14 @@ import yaml
 class LiveGuardError(ValueError):
     """Live execution is not sufficiently authorized or budgeted."""
 
+    def __init__(self, message: str, *, condition: str = "unknown") -> None:
+        super().__init__(message)
+        self.condition = condition
+
+
+class LiveConfigError(LiveGuardError):
+    """Provider configuration failed validation before dispatch."""
+
 
 @dataclass(frozen=True)
 class SpendReservation:
@@ -51,40 +59,40 @@ def load_live_provider_config(path: str | Path, provider: str) -> dict[str, Any]
     user-supplied values. Provider-specific payload contracts remain separate.
     """
     if provider not in _PROVIDER_FIELDS:
-        raise LiveGuardError("provider section is unsupported")
+        raise LiveConfigError("provider section is unsupported", condition="provider_section")
     try:
         document = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     except (OSError, UnicodeError, yaml.YAMLError):
-        raise LiveGuardError("provider configuration could not be loaded") from None
+        raise LiveConfigError("provider configuration could not be loaded", condition="config_read") from None
     if not isinstance(document, Mapping):
-        raise LiveGuardError("provider configuration must be a mapping")
+        raise LiveConfigError("provider configuration must be a mapping", condition="config_shape")
     section = document.get(provider)
     if not isinstance(section, Mapping):
-        raise LiveGuardError("provider configuration section is missing")
+        raise LiveConfigError("provider configuration section is missing", condition="config_section")
     result = dict(section)
     if _contains_todo(result):
-        raise LiveGuardError("provider configuration contains an unresolved TODO(verify)")
+        raise LiveConfigError("provider configuration contains an unresolved TODO(verify)", condition="config_unresolved")
     for field in _PROVIDER_FIELDS[provider]:
         if field not in result:
-            raise LiveGuardError(f"provider configuration field {field} is missing")
+            raise LiveConfigError(f"provider configuration field {field} is missing", condition=f"missing_{field}")
         value = result[field]
         if isinstance(value, str) and "TODO" in value.upper():
-            raise LiveGuardError(f"provider configuration field {field} is unresolved")
+            raise LiveConfigError(f"provider configuration field {field} is unresolved", condition=f"unresolved_{field}")
         if field in {"model_id", "model_id_contributor", "endpoint"}:
-            _clean_config_text(value, field)
+            _clean_config_text(value, field, error_type=LiveConfigError)
         elif field == "timeout_s":
-            _positive_decimal(value, "timeout")
+            _positive_decimal(value, "timeout", error_type=LiveConfigError)
         elif field == "max_tokens":
-            _positive_int(value, "max_tokens")
+            _positive_int(value, "max_tokens", error_type=LiveConfigError)
         elif field == "max_input_tokens_estimate":
-            _positive_int(value, "max_input_tokens_estimate")
+            _positive_int(value, "max_input_tokens_estimate", error_type=LiveConfigError)
         elif field.startswith("price_"):
-            _nonnegative_decimal(value, field)
+            _nonnegative_decimal(value, field, error_type=LiveConfigError)
     if provider == "tier1":
         host = document.get("glimmer_host")
         if not isinstance(host, Mapping):
-            raise LiveGuardError("Glimmer host configuration is missing")
-        _clean_config_text(host.get("choice"), "Glimmer host")
+            raise LiveConfigError("Glimmer host configuration is missing", condition="glimmer_host")
+        _clean_config_text(host.get("choice"), "Glimmer host", error_type=LiveConfigError)
     return result
 
 
@@ -128,16 +136,16 @@ def reserve_live_call(
     retains credential values.
     """
     if cli_authorized is not True:
-        raise LiveGuardError("explicit --live-authorized flag is required")
+        raise LiveGuardError("explicit --live-authorized flag is required", condition="cli_authorization")
     if environ.get("MYDRAK_LIVE") != "1":
-        raise LiveGuardError("MYDRAK_LIVE=1 is required")
+        raise LiveGuardError("MYDRAK_LIVE=1 is required", condition="MYDRAK_LIVE")
     if not isinstance(environ.get(credential_env_var), str) or not environ[credential_env_var]:
-        raise LiveGuardError("required credential environment variable is missing")
-    cap = _positive_decimal(max_spend_usd, "--max-spend-usd")
+        raise LiveGuardError("required credential environment variable is missing", condition="credential_missing")
+    cap = _positive_decimal(max_spend_usd, "--max-spend-usd", condition="max_spend_usd")
     if not isinstance(config, Mapping):
-        raise LiveGuardError("provider configuration is unavailable")
-    model_id = _clean_config_text(config.get("model_id"), "model ID")
-    endpoint = _clean_config_text(config.get("endpoint"), "endpoint")
+        raise LiveGuardError("provider configuration is unavailable", condition="provider_config")
+    model_id = _clean_config_text(config.get("model_id"), "model ID", condition="model_id")
+    endpoint = _clean_config_text(config.get("endpoint"), "endpoint", condition="endpoint")
     try:
         parsed_endpoint = urlsplit(endpoint)
         if (parsed_endpoint.scheme != "https" or not parsed_endpoint.hostname
@@ -146,27 +154,27 @@ def reserve_live_call(
             raise ValueError
         parsed_endpoint.port  # Force malformed/out-of-range port validation.
     except ValueError:
-        raise LiveGuardError("provider endpoint is malformed") from None
-    timeout = _positive_decimal(config.get("timeout_s"), "timeout")
+        raise LiveGuardError("provider endpoint is malformed", condition="endpoint") from None
+    timeout = _positive_decimal(config.get("timeout_s"), "timeout", condition="timeout_s")
     del timeout  # Validated here; the future transport must apply this value.
 
     tokens_in = _positive_int(
-        config.get("max_input_tokens_estimate"), "maximum input tokens estimate"
+        config.get("max_input_tokens_estimate"), "maximum input tokens estimate", condition="max_input_tokens_estimate"
     )
-    tokens_out = _positive_int(config.get("max_tokens"), "maximum output tokens")
-    input_price = _nonnegative_decimal(config.get("price_input_per_1m"), "input price")
-    output_price = _nonnegative_decimal(config.get("price_output_per_1m"), "output price")
+    tokens_out = _positive_int(config.get("max_tokens"), "maximum output tokens", condition="max_tokens")
+    input_price = _nonnegative_decimal(config.get("price_input_per_1m"), "input price", condition="price_input_per_1m")
+    output_price = _nonnegative_decimal(config.get("price_output_per_1m"), "output price", condition="price_output_per_1m")
     estimate = (
         Decimal(tokens_in) * input_price + Decimal(tokens_out) * output_price
     ) / Decimal(1_000_000)
     if estimate > cap:
-        raise LiveGuardError("worst-case reservation exceeds spend cap")
+        raise LiveGuardError("worst-case reservation exceeds spend cap", condition="spend_cap")
 
     path = Path(ledger_path)
     if str(path) == ":memory:" or path.name in {"", ".", ".."}:
-        raise LiveGuardError("a persistent local spend-ledger file is required")
+        raise LiveGuardError("a persistent local spend-ledger file is required", condition="spend_ledger")
     if not path.parent.exists() or not path.parent.is_dir():
-        raise LiveGuardError("spend-ledger directory is unavailable")
+        raise LiveGuardError("spend-ledger directory is unavailable", condition="spend_ledger")
     try:
         db = sqlite3.connect(path, timeout=5.0, isolation_level=None)
         try:
@@ -181,10 +189,10 @@ def reserve_live_call(
             ).fetchone()
             current = Decimal(row[0]) if row else Decimal(0)
             if not current.is_finite() or current < 0:
-                raise LiveGuardError("spend ledger is invalid")
+                raise LiveGuardError("spend ledger is invalid", condition="spend_ledger")
             cumulative = current + estimate
             if cumulative > cap:
-                raise LiveGuardError("worst-case reservation exceeds spend cap")
+                raise LiveGuardError("worst-case reservation exceeds spend cap", condition="spend_cap")
             db.execute(
                 "INSERT INTO spend_ledger(singleton,reserved_usd) VALUES(1,?) "
                 "ON CONFLICT(singleton) DO UPDATE SET reserved_usd=excluded.reserved_usd",
@@ -196,38 +204,42 @@ def reserve_live_call(
     except LiveGuardError:
         raise
     except (OSError, sqlite3.Error, InvalidOperation, ValueError, TypeError):
-        raise LiveGuardError("spend ledger could not authorize this call") from None
+        raise LiveGuardError("spend ledger could not authorize this call", condition="spend_ledger") from None
     return SpendReservation(model_id, estimate, cumulative)
 
 
-def _clean_config_text(value: Any, name: str) -> str:
+def _clean_config_text(value: Any, name: str, *, condition: str | None = None,
+                       error_type: type[LiveGuardError] = LiveGuardError) -> str:
     if not isinstance(value, str) or not value.strip() or value != value.strip():
-        raise LiveGuardError(f"provider {name} is missing or malformed")
+        raise error_type(f"provider {name} is missing or malformed", condition=condition or name)
     if "TODO" in value.upper() or any(char.isspace() for char in value):
-        raise LiveGuardError(f"provider {name} is unresolved")
+        raise error_type(f"provider {name} is unresolved", condition=condition or name)
     return value
 
 
-def _positive_int(value: Any, name: str) -> int:
+def _positive_int(value: Any, name: str, *, condition: str | None = None,
+                  error_type: type[LiveGuardError] = LiveGuardError) -> int:
     if type(value) is not int or value <= 0:
-        raise LiveGuardError(f"{name} is missing or invalid")
+        raise error_type(f"{name} is missing or invalid", condition=condition or name)
     return value
 
 
-def _positive_decimal(value: Any, name: str) -> Decimal:
-    parsed = _nonnegative_decimal(value, name)
+def _positive_decimal(value: Any, name: str, *, condition: str | None = None,
+                      error_type: type[LiveGuardError] = LiveGuardError) -> Decimal:
+    parsed = _nonnegative_decimal(value, name, condition=condition, error_type=error_type)
     if parsed <= 0:
-        raise LiveGuardError(f"{name} must be greater than zero")
+        raise error_type(f"{name} must be greater than zero", condition=condition or name)
     return parsed
 
 
-def _nonnegative_decimal(value: Any, name: str) -> Decimal:
+def _nonnegative_decimal(value: Any, name: str, *, condition: str | None = None,
+                         error_type: type[LiveGuardError] = LiveGuardError) -> Decimal:
     if isinstance(value, bool) or value is None or isinstance(value, str) and "TODO" in value.upper():
-        raise LiveGuardError(f"{name} is unknown")
+        raise error_type(f"{name} is unknown", condition=condition or name)
     try:
         parsed = Decimal(str(value))
     except (InvalidOperation, ValueError, TypeError):
-        raise LiveGuardError(f"{name} is unknown") from None
+        raise error_type(f"{name} is unknown", condition=condition or name) from None
     if not parsed.is_finite() or parsed < 0:
-        raise LiveGuardError(f"{name} is invalid")
+        raise error_type(f"{name} is invalid", condition=condition or name)
     return parsed

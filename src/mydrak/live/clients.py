@@ -11,12 +11,15 @@ import base64
 from collections.abc import Callable, Collection, Mapping
 from dataclasses import asdict
 from decimal import Decimal
+from http import HTTPStatus
 import json
 import os
+import socket
 import time
 from typing import Any
+from urllib.error import URLError
 
-from mydrak.live.guard import LiveGuardError, reserve_live_call
+from mydrak.live.guard import LiveConfigError, LiveGuardError, reserve_live_call
 from mydrak.live.http import MAX_RESPONSE_BYTES, JsonTransport, UrllibJsonTransport
 from mydrak.live.provider_contract import (
     chat_completions_url, parse_chat_response, require_text, validate_vocabulary,
@@ -43,6 +46,13 @@ _B8_INSTRUCTIONS = (
 
 class LiveDiagnosisError(RuntimeError):
     """Provider request failed with a sanitized, caller-safe error."""
+
+    def __init__(self, message: str, *, category: str = "network_error",
+                 http_status: int | None = None, http_reason: str | None = None) -> None:
+        super().__init__(message)
+        self.category = category
+        self.http_status = http_status
+        self.http_reason = http_reason
 
 
 class RetryableProviderError(LiveDiagnosisError):
@@ -87,6 +97,8 @@ class _BaseClient(DiagnosisProvider):
         if not callable(trace_callback):
             raise ValueError("a trace callback is required")
         self.last_step: TraceStep | None = None
+        self.last_request_sent = False
+        self._last_failure: tuple[str, int | None, str | None] = ("network_error", None, None)
 
     def generate(self) -> object:
         return self._request(self._prompt())
@@ -101,9 +113,14 @@ class _BaseClient(DiagnosisProvider):
         return self._request(repair_prompt)
 
     def _request(self, text: str) -> str:
-        url = chat_completions_url(self._config.get("endpoint"))
-        model = require_text(self._config.get("model_id"), "model ID")
-        body = self._body(model, text)
+        self.last_request_sent = False
+        self._last_failure = ("network_error", None, None)
+        try:
+            url = chat_completions_url(self._config.get("endpoint"))
+            model = require_text(self._config.get("model_id"), "model ID")
+            body = self._body(model, text)
+        except (KeyError, TypeError, ValueError):
+            raise LiveConfigError("provider configuration or request is invalid", condition="provider_request") from None
 
         def attempt() -> str:
             reservation = reserve_live_call(
@@ -115,36 +132,52 @@ class _BaseClient(DiagnosisProvider):
             if not isinstance(key, str) or not key:
                 raise LiveGuardError("required credential environment variable is missing")
             started = time.perf_counter()
-            transport_failed = False
+            transport_error: Exception | None = None
             try:
+                self.last_request_sent = True
                 status, raw = self._transport.post_json(
                     url, headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
                     body=body, timeout_s=float(self._config["timeout_s"]),
                 )
-            except Exception:
-                transport_failed = True
+            except Exception as exc:
+                transport_error = exc
             elapsed_ms = max(0.0, (time.perf_counter() - started) * 1000)
-            if transport_failed:
-                self._record(None, None, None, "transport_failed", elapsed_ms)
-                raise RetryableProviderError("provider request failed") from None
-            if (type(status) is not int or not 100 <= status <= 599
-                    or not isinstance(raw, bytes) or status < 200 or status >= 300
-                    or len(raw) > MAX_PROVIDER_RESPONSE_BYTES):
-                self._record(None, None, None, "http_or_size_error", elapsed_ms)
-                raise RetryableProviderError("provider returned an unusable response")
+            if transport_error is not None:
+                category = _transport_failure_category(transport_error)
+                self._last_failure = (category, None, None)
+                self._record(None, None, None, category, elapsed_ms)
+                raise RetryableProviderError("provider request failed", category=category) from None
+            if type(status) is not int or not 100 <= status <= 599 or not isinstance(raw, bytes):
+                self._last_failure = ("response_invalid", None, None)
+                self._record(None, None, None, "response_invalid", elapsed_ms)
+                raise RetryableProviderError("provider returned an invalid response", category="response_invalid") from None
+            if status < 200 or status >= 300:
+                reason = HTTPStatus(status).phrase if status in HTTPStatus._value2member_map_ else None
+                self._last_failure = ("http_error", status, reason)
+                self._record(None, None, None, "http_error", elapsed_ms)
+                raise RetryableProviderError(
+                    "provider returned an HTTP error", category="http_error",
+                    http_status=status, http_reason=reason,
+                ) from None
+            if len(raw) > MAX_PROVIDER_RESPONSE_BYTES:
+                self._last_failure = ("response_invalid", None, None)
+                self._record(None, None, None, "response_invalid", elapsed_ms)
+                raise RetryableProviderError("provider response is too large", category="response_invalid") from None
             invalid_envelope = False
             try:
                 content, tokens_in, tokens_out = parse_chat_response(
                     raw, max_bytes=MAX_PROVIDER_RESPONSE_BYTES,
                 )
-            except (TypeError, ValueError, UnicodeError, KeyError, IndexError):
+            except (TypeError, ValueError, UnicodeError, KeyError, IndexError, RecursionError):
                 invalid_envelope = True
             if invalid_envelope:
                 self._record(None, None, None, "response_invalid", elapsed_ms)
-                raise RetryableProviderError("provider returned an invalid response envelope") from None
+                self._last_failure = ("response_invalid", None, None)
+                raise RetryableProviderError("provider returned an invalid response envelope", category="response_invalid") from None
             if key in content:
                 self._record(tokens_in, tokens_out, None, "response_redacted", elapsed_ms)
-                raise LiveDiagnosisError("provider response was rejected")
+                self._last_failure = ("response_invalid", None, None)
+                raise LiveDiagnosisError("provider response was rejected", category="response_invalid") from None
             cost = estimate_token_cost(
                 tokens_in, tokens_out,
                 self._config.get("price_input_per_1m"), self._config.get("price_output_per_1m"),
@@ -153,7 +186,11 @@ class _BaseClient(DiagnosisProvider):
             return content
 
         def exhausted() -> str:
-            raise LiveDiagnosisError("provider unavailable after bounded retries")
+            category, status, reason = self._last_failure
+            raise LiveDiagnosisError(
+                "provider unavailable after bounded retries", category=category,
+                http_status=status, http_reason=reason,
+            ) from None
 
         return call_with_retries(
             attempt, exhausted, retry_delays_s=self._retry_delays_s,
@@ -176,7 +213,7 @@ class _BaseClient(DiagnosisProvider):
         except Exception:
             failed = True
         if failed:
-            raise ProviderTraceError("provider trace could not be recorded") from None
+            raise ProviderTraceError("provider trace could not be recorded", category="response_invalid") from None
 
     @property
     def _step_name(self) -> str:
@@ -290,3 +327,10 @@ class SparkClient(_BaseClient):
             "messages": [{"role": "user", "content": text + " Evidence: " + self._context}],
             "max_tokens": self._config["max_tokens"],
         }
+
+
+def _transport_failure_category(exc: Exception) -> str:
+    reason = exc.reason if isinstance(exc, URLError) else None
+    if isinstance(exc, (TimeoutError, socket.timeout)) or isinstance(reason, (TimeoutError, socket.timeout)):
+        return "timeout"
+    return "network_error"

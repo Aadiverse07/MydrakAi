@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 import json
 from typing import Any, Protocol
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 MAX_RESPONSE_BYTES = 1_048_576  # Project-local defensive parsing bound.
@@ -26,5 +27,12 @@ class UrllibJsonTransport:
             url, data=json.dumps(body, separators=(",", ":")).encode("utf-8"),
             headers=dict(headers), method="POST",
         )
-        with urlopen(request, timeout=timeout_s) as response:
-            return response.status, response.read(MAX_RESPONSE_BYTES + 1)
+        try:
+            with urlopen(request, timeout=timeout_s) as response:
+                return response.status, response.read(MAX_RESPONSE_BYTES + 1)
+        except HTTPError as exc:
+            # Do not read or retain the provider error body.
+            try:
+                return int(exc.code), b""
+            finally:
+                exc.close()

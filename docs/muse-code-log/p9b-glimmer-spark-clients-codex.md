@@ -3,6 +3,18 @@
 **Tool:** Codex
 **Scope:** Offline implementation and tests only. No live execution.
 
+## Smoke diagnostic correction
+
+The shared smoke runner now reports exactly one `failure_category` per failed
+run and always states `request_sent=true|false`. Categories distinguish
+`guard_refused` (with a stable condition ID), `config_invalid`, `missing_key`,
+`network_error`, `timeout`, `http_error`, `response_invalid`, and
+`schema_invalid`. HTTP reports contain only the numeric status and standard
+library reason phrase. The urllib transport closes HTTP error responses without
+reading their bodies. No exception text, response body, headers, request body,
+or credentials are included in output. Offline tests use mocked transports and
+temporary ledgers only.
+
 ## Pre-edit scope and acceptance
 
 Files planned for this slice: `src/mydrak/live/guard.py`, `retry.py`, new
@@ -73,3 +85,15 @@ Offline tests used injected in-memory transports only. No API, network, media
 upload, credential, credit, dependency installation, `.env` read, or Git history
 operation was used. `config/models.yaml` and `docs/providers/` remain
 pre-existing user-supplied, unstaged work. Live SAM remains **NO-GO**.
+
+### 2026-10-31 smoke failure diagnostics follow-up
+
+Commands and results for the diagnostic correction:
+
+- `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -p no:cacheprovider tests/test_live_smoke_diagnostics.py tests/test_live_smoke.py tests/test_live_clients.py tests/test_live_guard.py -q` — exit 0, **62 passed**.
+- `python3 -m pytest -q` — exit 0, **1118 passed**.
+- `python3 -m compileall -q src tests eval` — exit 0.
+- In-memory TOML/YAML parse of `pyproject.toml`, all `config/*.yaml`, and all `kb/*.yaml` — exit 0; **1 TOML and 5 YAML files parsed**.
+- `git diff --check` — exit 0; no output. Scoped whitespace scan across 10 changed files — **0 trailing-whitespace lines**.
+- Metadata only: `git check-ignore -v .env` returned `.gitignore:2:.env`; `git ls-files -- .env` returned no paths; `git status --short --ignored -- .env` returned `!! .env`. The spend ledger matches `.gitignore:36:*.sqlite*`. Neither file was read.
+- Offline tests mocked `urlopen` and injected mock transports; no socket, provider, response body, real key, or live smoke script was used. Live SAM remains **NO-GO**.
