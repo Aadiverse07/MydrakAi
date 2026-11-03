@@ -536,3 +536,9 @@
 - Updated only the `notes` values for the four owner-confirmed Batch 1 source IDs in `kb/sources.yaml`; titles, years, flags, and all other registry fields were preserved. Confirmation wording records the user's PDF confirmation on 2026-11-03. The soybean Bulletin 17/16 discrepancy remains explicitly unresolved.
 - Clarified the supplied integration notes so initial page-review observations are not mistaken for the current confirmed year metadata. No test contained the superseded note text, so no test edits were needed. Disease-card YAML was not changed.
 - Verification: focused KB tests and full suite results are recorded in `docs/muse-code-log/kb-batch1-integration-codex.md` under the note-correction follow-up.
+
+## 2026-11-03 — Reply composer approval gate (Codex)
+
+- What changed: `compose_reply()` now rejects answer and ask rendering unless the disease card is `status: verified` and both English and Hindi review states are `REVIEWED`. The separate safety-card-only referral and retake paths remain unchanged. `followup.py` was not changed.
+- Tests use synthetic approved card metadata only; workflow integration tests apply that metadata to a validated `SYNTHETIC_TEST` fixture in memory. No production KB card or card YAML was changed, and synthetic metadata is not reviewer evidence.
+- Verification: focused composer/workflow/failure-injection tests **58 passed**; full suite **1274 passed**. Exact commands are recorded in `docs/muse-code-log/reply-composer-approval-gate-codex.md`.

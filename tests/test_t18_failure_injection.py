@@ -2,6 +2,7 @@
 
 from hashlib import sha256
 from io import BytesIO
+from unittest.mock import patch
 from PIL import Image
 import pytest
 
@@ -15,6 +16,7 @@ from mydrak.workflow.mock_providers import (
     DeterministicMockTranscriber,
 )
 from mydrak.workflow.pipeline import TestOnlySignalOverride, run_synthetic_mock_workflow
+import mydrak.workflow.pipeline as pipeline
 import mydrak.workflow.pipeline_support as support
 
 
@@ -44,14 +46,28 @@ def _diagnosis(*, plant=True, crop="synthetic_crop"):
 
 
 def _run(glimmer, spark=None, sam=None, *, override=None, store=None):
-    return run_synthetic_mock_workflow(
-        _photo(), "en", glimmer_provider=glimmer,
-        spark_provider=spark or DeterministicMockDiagnosisProvider((_diagnosis(),)),
-        sam_provider=sam or DeterministicMockSamProvider(("11",), ("10",)),
-        trace_store=store or TraceStore(":memory:"),
-        data_policy_value="public_test", evidence=EVIDENCE,
-        signal_override=override,
-    )
+    validate = pipeline.validate_disease_card
+
+    def validate_synthetic_approved(card, **kwargs):
+        validated = validate(card, **kwargs)
+        if validated.get("id") == "SYNTHETIC_TEST":
+            # Test-only approval metadata is synthetic and not reviewer evidence.
+            validated = {
+                **validated,
+                "status": "verified",
+                "review_status": {"en": "REVIEWED", "hi": "REVIEWED"},
+            }
+        return validated
+
+    with patch.object(pipeline, "validate_disease_card", validate_synthetic_approved):
+        return run_synthetic_mock_workflow(
+            _photo(), "en", glimmer_provider=glimmer,
+            spark_provider=spark or DeterministicMockDiagnosisProvider((_diagnosis(),)),
+            sam_provider=sam or DeterministicMockSamProvider(("11",), ("10",)),
+            trace_store=store or TraceStore(":memory:"),
+            data_policy_value="public_test", evidence=EVIDENCE,
+            signal_override=override,
+        )
 
 
 def _rows(store, case_id):

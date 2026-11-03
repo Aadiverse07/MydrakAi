@@ -4,6 +4,7 @@ from io import BytesIO
 from pathlib import Path
 import ast
 import socket
+from unittest.mock import patch
 
 from PIL import Image
 import pytest
@@ -67,13 +68,28 @@ def _run(*, override=None, policy="public_test", evidence=EVIDENCE, photo=None,
          providers=None, store=None, language="en", user_hash=None, voice_hint=None):
     glimmer, spark, sam = providers or _providers()
     store = store or TraceStore(":memory:")
-    result = run_synthetic_mock_workflow(
-        photo if photo is not None else _photo(), language,
-        glimmer_provider=glimmer, spark_provider=spark, sam_provider=sam,
-        trace_store=store, data_policy_value=policy,
-        evidence=evidence, signal_override=override, user_hash=user_hash,
-        voice_hint=voice_hint,
-    )
+    validate = pipeline.validate_disease_card
+
+    def validate_synthetic_approved(card, **kwargs):
+        validated = validate(card, **kwargs)
+        if validated.get("id") == "SYNTHETIC_TEST":
+            # Test-only approval metadata exercises composer integration; it is
+            # not reviewer evidence and is never applied to production cards.
+            validated = {
+                **validated,
+                "status": "verified",
+                "review_status": {"en": "REVIEWED", "hi": "REVIEWED"},
+            }
+        return validated
+
+    with patch.object(pipeline, "validate_disease_card", validate_synthetic_approved):
+        result = run_synthetic_mock_workflow(
+            photo if photo is not None else _photo(), language,
+            glimmer_provider=glimmer, spark_provider=spark, sam_provider=sam,
+            trace_store=store, data_policy_value=policy,
+            evidence=evidence, signal_override=override, user_hash=user_hash,
+            voice_hint=voice_hint,
+        )
     if result.reply is not None:
         assert result.reply.startswith(SYNTHETIC_MOCK_LABEL)
         assert "preliminary guidance" in result.reply
