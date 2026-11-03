@@ -1,8 +1,8 @@
-"""Deterministic-interface replay of explicitly synthetic offline cases.
+"""Offline-only replay for in-memory cases and fixed cached demo responses.
 
-This is a project-local C2 T15 slice, not B10 live/replay response caching.
-The fixture is supplied in memory, processed only by the existing offline
-coordinator, and never serialized into the trace database.
+Registered cached scenarios use the existing B9 SQLite cache and fixed
+synthetic text. They never invoke providers or fall through to live execution.
+The separate coordinator fixture path remains in-memory and is not serialized.
 """
 
 from collections.abc import Mapping
@@ -33,7 +33,13 @@ from mydrak.workflow.coordinator import (
 )
 
 REPLAY_FIXTURE_PROVENANCE = "synthetic-offline-replay-fixture"
-REGISTERED_DEMO_FIXTURE_IDS = frozenset({"synthetic-referral-01"})
+REGISTERED_DEMO_SCENARIOS = {
+    "synthetic-answer-01": ("answer", "synthetic_answer"),
+    "synthetic-ask-01": ("ask", "synthetic_ask"),
+    "synthetic-referral-01": ("referred", "safe_referral"),
+    "synthetic-retake-01": ("retake", "synthetic_retake"),
+}
+REGISTERED_DEMO_FIXTURE_IDS = frozenset(REGISTERED_DEMO_SCENARIOS)
 
 
 class ReplayError(ValueError):
@@ -83,6 +89,27 @@ def registered_demo_cache_key(fixture_id: str) -> str:
     if not isinstance(fixture_id, str) or fixture_id not in REGISTERED_DEMO_FIXTURE_IDS:
         raise ReplayError("synthetic replay fixture is not registered")
     return demo_cache_key(fixture_id)
+
+
+def seed_registered_demo_cache(trace_store: TraceStore) -> int:
+    """Insert fixed synthetic demo replies; never overwrite or call providers."""
+    if type(trace_store) is not TraceStore:
+        raise ReplayError("trace store is required")
+    inserted = 0
+    for fixture_id, (status, response_code) in REGISTERED_DEMO_SCENARIOS.items():
+        key = registered_demo_cache_key(fixture_id)
+        try:
+            if trace_store.get_cache(key) is None:
+                trace_store.put_cache(key, {
+                    "schema": CACHE_SCHEMA,
+                    "provenance": CACHE_PROVENANCE,
+                    "status": status,
+                    "response_code": response_code,
+                })
+                inserted += 1
+        except TraceError:
+            raise ReplayError("synthetic demo cache could not be seeded") from None
+    return inserted
 
 
 def run_replay(fixture: OfflineReplayFixture, *, trace_store: TraceStore) -> ReplayResult:

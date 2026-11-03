@@ -1,0 +1,139 @@
+# DRAFT disease card (batch 1). status: draft. English and Hindi are UNREVIEWED.
+# Not production-approved farmer guidance. Hindi is a draft translation pending native-speaker review.
+# chemical_options is intentionally empty. confusable_with is intentionally empty pending agronomist input.
+id: potato_early_blight
+crop: potato
+names:
+  en: Early blight (potato)
+  hi: आलू का अगेती झुलसा (अर्ली ब्लाइट)
+symptoms:
+- Small, circular to oval brown spots first on the lower and older leaves
+- Lesions later become larger and angular
+- Target-board concentric rings of raised and depressed dead tissue, often with a yellowish halo
+- 'Tuber lesions: brown, circular to irregular, depressed, with dry, brown, corky flesh underneath'
+- Brown to black, oval, large circular spots with concentric rings
+confusable_with: []
+follow_up_questions:
+- id: target_rings
+  en: Do the spots have target-board rings, with a yellowish halo around them?
+  hi: क्या धब्बों में निशाने (टारगेट बोर्ड) जैसे गोल छल्ले और उनके चारों ओर पीला घेरा दिखता है?
+- id: lower_leaves
+  en: Did the spots first appear on the lower, older leaves?
+  hi: क्या धब्बे पहले नीचे की पुरानी पत्तियों पर आए?
+- id: tubers
+  en: Do the tubers have brown, depressed patches with dry, corky flesh underneath?
+  hi: क्या कंदों पर भूरे, दबे हुए धब्बे हैं जिनके नीचे का गूदा सूखा और कठोर है?
+low_risk_steps:
+  en:
+  - Use disease-free seed for planting.
+  - Avoid growing other solanaceous crops near potato fields.
+  - Remove and burn the haulms of the affected crop to reduce spread in the field.
+  - Use balanced fertilizer amounts, especially nitrogen.
+  hi:
+  - रोगमुक्त बीज का उपयोग करें।
+  - आलू के खेतों के पास टमाटर जैसी अन्य सोलेनेसी फसलें न उगाएँ।
+  - प्रभावित फसल के डंठल/बेल (हॉल्म) हटाकर जला दें, ताकि खेत में रोग कम फैले।
+  - उर्वरक संतुलित मात्रा में दें, विशेषकर नाइट्रोजन।
+chemical_options: []
+when_to_refer: The source describes fungicide sprays for early blight, but this draft card gives no spray advice. Other leaf spots of potato look different but can be confused with it, so ask the local KVK or agriculture officer to confirm the disease and advise on any spray.
+sources:
+- icar_cpri_gap_bulletin_108
+reviewed_by: null
+status: draft
+region_tags:
+- national
+claim_sources:
+- claim: names.en
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Early blight and leaf spot (leaf symptoms)'
+- claim: names.hi
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Early blight and leaf spot (leaf symptoms)'
+- claim: symptoms[0]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Early blight and leaf spot (leaf symptoms)'
+- claim: symptoms[1]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Early blight and leaf spot (leaf symptoms)'
+- claim: symptoms[2]
+  source_id: icar_cpri_gap_bulletin_108
+  page: 128-129
+  section: '13. Disease Management: Early blight and leaf spot (symptoms)'
+- claim: symptoms[3]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+- claim: symptoms[4]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '160'
+  section: 'Annexure 12: Common diseases in potato with their symptoms'
+- claim: follow_up_questions[0].en
+  source_id: icar_cpri_gap_bulletin_108
+  page: 128-129
+  section: '13. Disease Management: Early blight and leaf spot (symptoms)'
+- claim: follow_up_questions[0].hi
+  source_id: icar_cpri_gap_bulletin_108
+  page: 128-129
+  section: '13. Disease Management: Early blight and leaf spot (symptoms)'
+- claim: follow_up_questions[1].en
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Early blight and leaf spot (leaf symptoms)'
+- claim: follow_up_questions[1].hi
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Early blight and leaf spot (leaf symptoms)'
+- claim: follow_up_questions[2].en
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+- claim: follow_up_questions[2].hi
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+- claim: low_risk_steps.en[0]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+- claim: low_risk_steps.en[1]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+- claim: low_risk_steps.en[2]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+- claim: low_risk_steps.en[3]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+- claim: low_risk_steps.hi[0]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+- claim: low_risk_steps.hi[1]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+- claim: low_risk_steps.hi[2]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+- claim: low_risk_steps.hi[3]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+- claim: when_to_refer
+  source_id: icar_cpri_gap_bulletin_108
+  page: '129'
+  section: '13. Disease Management: Early blight and leaf spot (tuber symptoms and management)'
+review_status:
+  en: UNREVIEWED
+  hi: UNREVIEWED
+language_reviewers:
+  en: null
+  hi: null

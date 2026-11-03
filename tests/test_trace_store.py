@@ -1,10 +1,15 @@
 """Offline-only tests for the B9 case/step persistence boundary."""
 
 from decimal import Decimal
+import json
+import sqlite3
 
 import pytest
 
-from mydrak.trace.store import TraceCase, TraceError, TraceStep, TraceStore, estimate_token_cost
+from mydrak.trace.store import (
+    TraceCase, TraceError, TraceStep, TraceStore,
+    WORKFLOW_CACHE_PROVENANCE, WORKFLOW_CACHE_SCHEMA, estimate_token_cost,
+)
 
 
 def _case(case_id="00000000000000000000000000000001"):
@@ -27,7 +32,10 @@ def test_case_and_steps_are_persisted_atomically_with_total_latency_and_unknown_
     case = store.get_case("00000000000000000000000000000001")
     assert case["latency_ms_total"] == pytest.approx(4.0)
     assert case["est_cost"] is None
-    assert [step["step_name"] for step in store.get_steps("00000000000000000000000000000001")] == [
+    stored_steps = store.get_steps("00000000000000000000000000000001")
+    assert all(step["started_at"] for step in stored_steps)
+    assert all(step["tokens_in"] is None and step["tokens_out"] is None for step in stored_steps)
+    assert [step["step_name"] for step in stored_steps] == [
         "intake_validate", "offline_sam"
     ]
 
@@ -173,3 +181,75 @@ def test_t04_image_measurements_reject_invalid_numbers(values):
             leaf_coverage_fraction=values[2],
             leaf_coverage_method="unverified_green_hue_pixel_proxy",
         )
+
+
+def test_eval_runs_table_and_round_trip_are_created_in_shared_store():
+    store = TraceStore(":memory:")
+    tables = {row[0] for row in store._connection.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+    ).fetchall()}
+    assert {"cases", "steps", "signals", "scans", "cache", "eval_runs"} <= tables
+    run = store.record_eval_run(
+        run_id="a" * 32, strategy="router", git_sha="b" * 40,
+        metrics={"accuracy": None, "cost_per_task": None},
+        timestamp="2026-10-30T12:00:00Z",
+    )
+    assert store.get_eval_run("a" * 32) == run
+    assert json.loads(run.metrics_json)["cost_per_task"] is None
+    with pytest.raises(TraceError, match="already exists"):
+        store.record_eval_run(run_id="a" * 32, strategy="router", git_sha=None, metrics={"x": 1})
+
+
+def test_workflow_cache_payload_is_synthetic_and_excludes_media_and_overlay_bytes():
+    store = TraceStore(":memory:")
+    key = "f" * 64
+    payload = {
+        "schema": WORKFLOW_CACHE_SCHEMA,
+        "provenance": WORKFLOW_CACHE_PROVENANCE,
+        "action": "answer",
+        "reason": "decider_answer",
+        "reply": "SYNTHETIC / MOCK — preliminary guidance. Safe test reply.",
+        "severity_pct": 25.0,
+        "severity_band": "moderate",
+    }
+    cached = store.put_cache(key, payload)
+    assert cached.provenance == WORKFLOW_CACHE_PROVENANCE
+    assert cached.reply == payload["reply"] and cached.severity_pct == 25.0
+    raw = store._connection.execute('SELECT response_json FROM cache WHERE "key"=?', (key,)).fetchone()[0]
+    assert json.loads(raw)["provenance"] == WORKFLOW_CACHE_PROVENANCE
+    assert "image_bytes" not in raw and "overlay_bytes" not in raw
+    with pytest.raises(TraceError):
+        store.put_cache("e" * 64, {**payload, "overlay_bytes": "not permitted"})
+
+
+def test_legacy_database_migrates_started_at_without_losing_existing_rows(tmp_path):
+    database = tmp_path / "legacy.sqlite"
+    connection = sqlite3.connect(database)
+    connection.executescript("""
+        CREATE TABLE cases (
+            case_id TEXT PRIMARY KEY, ts TEXT, user_hash TEXT, lang TEXT NOT NULL,
+            input_type TEXT NOT NULL, image_hash TEXT, quality_scores TEXT,
+            final_action TEXT NOT NULL, kb_card_id TEXT, severity_pct REAL,
+            latency_ms_total REAL NOT NULL, est_cost TEXT, data_policy TEXT
+        );
+        CREATE TABLE steps (
+            case_id TEXT NOT NULL, ordinal INTEGER NOT NULL, step_name TEXT NOT NULL,
+            model TEXT, latency_ms REAL NOT NULL, tokens_in INTEGER, tokens_out INTEGER,
+            est_cost TEXT, error TEXT, retries INTEGER NOT NULL, outcome TEXT NOT NULL,
+            PRIMARY KEY(case_id, ordinal)
+        );
+        INSERT INTO cases(case_id,lang,input_type,final_action,latency_ms_total)
+          VALUES('000000000000000000000000000000aa','en','photo','refer',1.0);
+        INSERT INTO steps(case_id,ordinal,step_name,latency_ms,retries,outcome)
+          VALUES('000000000000000000000000000000aa',0,'legacy',1.0,0,'completed');
+    """)
+    connection.commit()
+    connection.close()
+    store = TraceStore(database)
+    assert store.get_case("000000000000000000000000000000aa") is not None
+    assert store.get_steps("000000000000000000000000000000aa")[0]["started_at"] is None
+    store.record_case(
+        _case("000000000000000000000000000000ab"),
+        [TraceStep("new_step", "completed", 0.5)],
+    )
+    assert store.get_steps("000000000000000000000000000000ab")[0]["started_at"]

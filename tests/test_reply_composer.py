@@ -12,6 +12,10 @@ from conftest import REPO_ROOT
 
 # Synthetic-only card: its wording is a rendering fixture, not agronomic advice.
 SYNTHETIC_CARD = {
+    # Test-only approval metadata permits exercising the rendering contract;
+    # it is not evidence of agricultural or reviewer approval.
+    "status": "verified",
+    "review_status": {"en": "REVIEWED", "hi": "REVIEWED"},
     "crop": "sample crop",
     "names": {"en": "Sample issue"},
     "low_risk_steps": {"en": ["Synthetic step one", "Synthetic step two"]},
@@ -25,6 +29,34 @@ SYNTHETIC_SAFETY_CARD = {
     "retake_text": "Synthetic retake instruction.",
 }
 REPO_SAFETY_CARD = load_safety_card(REPO_ROOT / "kb" / "cards" / "general_safety.yaml")
+
+
+def test_draft_disease_card_is_rejected_for_farmer_facing_rendering():
+    card = {**SYNTHETIC_CARD, "status": "draft"}
+    with pytest.raises(ReplyError, match="not approved for farmer-facing replies"):
+        compose_reply(
+            "answer", card=card, safety_card=SYNTHETIC_SAFETY_CARD,
+            confidence="not sure",
+        )
+
+
+def test_verified_card_with_unreviewed_hindi_is_rejected():
+    card = {
+        **SYNTHETIC_CARD,
+        "review_status": {"en": "REVIEWED", "hi": "UNREVIEWED"},
+    }
+    with pytest.raises(ReplyError, match="not approved for farmer-facing replies"):
+        compose_reply(
+            "answer", card=card, safety_card=SYNTHETIC_SAFETY_CARD,
+            confidence="not sure",
+        )
+
+
+def test_verified_card_with_both_languages_reviewed_is_accepted():
+    assert "Sample issue on sample crop" in compose_reply(
+        "answer", card=SYNTHETIC_CARD, safety_card=SYNTHETIC_SAFETY_CARD,
+        confidence="not sure",
+    )
 
 
 def test_answer_snapshot_with_optional_severity_is_caveated_and_safety_grounded():
@@ -101,7 +133,7 @@ def test_existing_safety_card_supports_referral_and_retake_copy():
 
 
 def test_safety_only_card_cannot_become_an_answer():
-    with pytest.raises(ReplyError, match="names"):
+    with pytest.raises(ReplyError, match="not approved for farmer-facing replies"):
         compose_reply(
             "answer", card=REPO_SAFETY_CARD, safety_card=REPO_SAFETY_CARD,
             confidence="cannot tell",

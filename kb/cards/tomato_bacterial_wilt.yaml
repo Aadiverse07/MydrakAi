@@ -1,0 +1,114 @@
+# DRAFT disease card (batch 1). status: draft. English and Hindi are UNREVIEWED.
+# Not production-approved farmer guidance. Hindi is a draft translation pending native-speaker review.
+# chemical_options is intentionally empty. confusable_with is intentionally empty pending agronomist input.
+id: tomato_bacterial_wilt
+crop: tomato
+names:
+  en: Bacterial wilt (tomato)
+  hi: टमाटर का जीवाणु मुरझान (बैक्टीरियल विल्ट)
+symptoms:
+- Rapid and complete wilting of normally grown, grown-up plants
+- Lower leaves may drop before wilting
+- In advanced cases, yellow-brown discolouration of tissues inside the stem
+- A cut plant part placed in clear water shows a white streak of bacterial ooze at the cut ends
+confusable_with: []
+follow_up_questions:
+- id: sudden_wilt
+  en: Did grown-up, healthy-looking plants wilt rapidly and completely?
+  hi: क्या बड़े, स्वस्थ दिखने वाले पौधे तेज़ी से पूरी तरह मुरझा गए?
+- id: lower_drop
+  en: Did the lower leaves drop before the plant wilted?
+  hi: क्या मुरझाने से पहले नीचे की पत्तियाँ झड़ गईं?
+- id: ooze
+  en: When a cut stem piece is held in clear water, does a white streak of ooze come out?
+  hi: क्या तने का कटा टुकड़ा साफ़ पानी में रखने पर सफ़ेद धारी जैसा रिसाव निकलता है?
+low_risk_steps:
+  en:
+  - Avoid damaging seedlings while transplanting.
+  - Use crop rotation; the source reports rotations such as cowpea-maize-cabbage and okra-cowpea-maize as effective.
+  hi:
+  - रोपाई के समय पौध को नुकसान न पहुँचाएँ।
+  - फसल चक्र अपनाएँ; स्रोत के अनुसार लोबिया-मक्का-पत्तागोभी और भिंडी-लोबिया-मक्का जैसे चक्र प्रभावी बताए गए हैं।
+chemical_options: []
+when_to_refer: The source lists a soil treatment for this disease, but this draft card gives no treatment advice. Ask the local KVK or agriculture officer to confirm the disease and advise.
+sources:
+- icar_tomato_hort_ecourse
+reviewed_by: null
+status: draft
+region_tags:
+- national
+claim_sources:
+- claim: names.en
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: names.hi
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: symptoms[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: symptoms[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: symptoms[2]
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: symptoms[3]
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: follow_up_questions[0].en
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: follow_up_questions[0].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: follow_up_questions[1].en
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: follow_up_questions[1].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: follow_up_questions[2].en
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: follow_up_questions[2].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Symptom'
+- claim: low_risk_steps.en[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '114'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Management'
+- claim: low_risk_steps.en[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '114'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Management'
+- claim: low_risk_steps.hi[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '114'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Management'
+- claim: low_risk_steps.hi[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '114'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Management'
+- claim: when_to_refer
+  source_id: icar_tomato_hort_ecourse
+  page: '114'
+  section: 'Lecture 14 - Diseases of Tomato: Bacterial wilt, Management'
+review_status:
+  en: UNREVIEWED
+  hi: UNREVIEWED
+language_reviewers:
+  en: null
+  hi: null

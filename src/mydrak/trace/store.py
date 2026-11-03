@@ -36,6 +36,16 @@ class TraceStep:
     est_cost: Decimal | None = None
     error_code: str | None = None
     retries: int = 0
+    started_at: str | None = None
+
+
+@dataclass(frozen=True)
+class EvalRun:
+    run_id: str
+    strategy: str
+    git_sha: str | None
+    timestamp: str
+    metrics_json: str
 
 
 @dataclass(frozen=True)
@@ -54,12 +64,19 @@ class TraceCase:
 
 CACHE_SCHEMA = "mydrak-demo-response-v1"
 CACHE_PROVENANCE = "synthetic-offline-demo"
+WORKFLOW_CACHE_SCHEMA = "mydrak-workflow-result-v1"
+WORKFLOW_CACHE_PROVENANCE = "SYNTHETIC / MOCK"
 CACHE_RESPONSE_CODES = {
     ("blocked", "policy_blocked"),
     ("referred", "safe_referral"),
     ("manual_review", "manual_review"),
+    ("answer", "synthetic_answer"),
+    ("ask", "synthetic_ask"),
+    ("refer", "synthetic_referral"),
+    ("retake", "synthetic_retake"),
 }
 MAX_CACHE_RESPONSE_BYTES = 512
+MAX_WORKFLOW_CACHE_RESPONSE_BYTES = 8192
 
 
 @dataclass(frozen=True)
@@ -68,6 +85,11 @@ class CachedResponse:
     status: str
     response_code: str
     timestamp: str
+    provenance: str = CACHE_PROVENANCE
+    reason: str | None = None
+    reply: str | None = None
+    severity_pct: float | None = None
+    severity_band: str | None = None
 
 
 def estimate_token_cost(
@@ -179,10 +201,27 @@ class TraceStore:
                     response_json TEXT NOT NULL,
                     ts TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS eval_runs (
+                    run_id TEXT PRIMARY KEY,
+                    strategy TEXT NOT NULL,
+                    git_sha TEXT,
+                    ts TEXT NOT NULL,
+                    metrics_json TEXT NOT NULL
+                );
                 """
             )
+            self._migrate_legacy_steps()
         except sqlite3.Error:
             raise TraceError("trace database could not be initialized") from None
+
+    def _migrate_legacy_steps(self) -> None:
+        """Add B9 started_at to older databases without rebuilding trace rows."""
+        columns = {
+            row["name"]
+            for row in self._connection.execute("PRAGMA table_info(steps)").fetchall()
+        }
+        if "started_at" not in columns:
+            self._connection.execute("ALTER TABLE steps ADD COLUMN started_at TEXT")
 
     def record_case(self, case: TraceCase, steps: tuple[TraceStep, ...] | list[TraceStep]) -> None:
         _validate_case(case)
@@ -208,10 +247,11 @@ class TraceStore:
                      case.data_policy),
                 )
                 self._connection.executemany(
-                    """INSERT INTO steps(case_id,ordinal,step_name,model,latency_ms,
+                    """INSERT INTO steps(case_id,ordinal,step_name,model,started_at,latency_ms,
                        tokens_in,tokens_out,est_cost,error,retries,outcome)
-                       VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
                     [(case.case_id, index, step.step_name, step.model,
+                      _normalize_timestamp(step.started_at) if step.started_at is not None else _utc_now(),
                       step.latency_ms, step.tokens_in, step.tokens_out,
                       str(step.est_cost) if step.est_cost is not None else None,
                       step.error_code, step.retries, step.outcome)
@@ -229,6 +269,50 @@ class TraceStore:
             "SELECT * FROM steps WHERE case_id=? ORDER BY ordinal", (case_id,)
         ).fetchall()
         return [dict(row) for row in rows]
+
+    def record_eval_run(
+        self,
+        *,
+        run_id: str,
+        strategy: str,
+        git_sha: str | None,
+        metrics: Mapping[str, object],
+        timestamp: str | None = None,
+    ) -> EvalRun:
+        """Persist one bounded B9 evaluation summary without cost inference."""
+        _validate_eval_run(run_id, strategy, git_sha, metrics)
+        stamp = _normalize_timestamp(timestamp) if timestamp is not None else _utc_now()
+        try:
+            metrics_json = json.dumps(dict(metrics), sort_keys=True, separators=(",", ":"), allow_nan=False)
+        except (TypeError, ValueError, RecursionError):
+            raise TraceError("evaluation metrics are not valid JSON") from None
+        if len(metrics_json.encode("utf-8")) > 65_536:
+            raise TraceError("evaluation metrics exceed the size limit")
+        try:
+            with self._connection:
+                self._connection.execute(
+                    "INSERT INTO eval_runs(run_id,strategy,git_sha,ts,metrics_json) VALUES(?,?,?,?,?)",
+                    (run_id, strategy, git_sha, stamp, metrics_json),
+                )
+        except sqlite3.IntegrityError:
+            raise TraceError("evaluation run already exists") from None
+        except sqlite3.Error:
+            raise TraceError("evaluation run could not be stored") from None
+        return EvalRun(run_id, strategy, git_sha, stamp, metrics_json)
+
+    def get_eval_run(self, run_id: str) -> EvalRun | None:
+        if not isinstance(run_id, str) or not re.fullmatch(r"[0-9a-f]{32}", run_id):
+            raise TraceError("evaluation run ID must be lowercase UUID hex")
+        try:
+            row = self._connection.execute(
+                "SELECT run_id,strategy,git_sha,ts,metrics_json FROM eval_runs WHERE run_id=?",
+                (run_id,),
+            ).fetchone()
+        except sqlite3.Error:
+            raise TraceError("evaluation run could not be read") from None
+        if row is None:
+            return None
+        return EvalRun(row["run_id"], row["strategy"], row["git_sha"], row["ts"], row["metrics_json"])
 
     def record_image_measurements(
         self,
@@ -337,7 +421,8 @@ class TraceStore:
         normalized = _normalize_cache_payload(payload)
         stamp = _normalize_cache_timestamp(timestamp) if timestamp is not None else _utc_now()
         response_json = json.dumps(normalized, sort_keys=True, separators=(",", ":"), allow_nan=False)
-        if len(response_json.encode("utf-8")) > MAX_CACHE_RESPONSE_BYTES:
+        size_limit = MAX_WORKFLOW_CACHE_RESPONSE_BYTES if normalized["schema"] == WORKFLOW_CACHE_SCHEMA else MAX_CACHE_RESPONSE_BYTES
+        if len(response_json.encode("utf-8")) > size_limit:
             raise TraceError("cached response exceeds the size limit")
         try:
             with self._connection:
@@ -349,6 +434,18 @@ class TraceStore:
             raise TraceError("cache key already exists") from None
         except sqlite3.Error:
             raise TraceError("cache entry could not be stored") from None
+        if normalized["schema"] == WORKFLOW_CACHE_SCHEMA:
+            return CachedResponse(
+                cache_key=cache_key,
+                status=str(normalized["action"]),
+                response_code=str(normalized["action"]),
+                timestamp=stamp,
+                provenance=WORKFLOW_CACHE_PROVENANCE,
+                reason=str(normalized["reason"]),
+                reply=str(normalized["reply"]),
+                severity_pct=normalized["severity_pct"],
+                severity_band=normalized["severity_band"],
+            )
         return CachedResponse(
             cache_key=cache_key,
             status=normalized["status"],
@@ -371,11 +468,24 @@ class TraceStore:
         stamp = _normalize_cache_timestamp(row["ts"])
         if stamp != row["ts"]:
             raise TraceError("cached response timestamp is not canonical")
+        if payload["schema"] == WORKFLOW_CACHE_SCHEMA:
+            return CachedResponse(
+                cache_key=cache_key,
+                status=str(payload["action"]),
+                response_code=str(payload["action"]),
+                timestamp=stamp,
+                provenance=WORKFLOW_CACHE_PROVENANCE,
+                reason=str(payload["reason"]),
+                reply=str(payload["reply"]),
+                severity_pct=payload["severity_pct"],
+                severity_band=payload["severity_band"],
+            )
         return CachedResponse(
             cache_key=cache_key,
             status=payload["status"],
             response_code=payload["response_code"],
             timestamp=stamp,
+            provenance=CACHE_PROVENANCE,
         )
 
     def record_scan(
@@ -511,7 +621,9 @@ def _validate_signal_record(
         raise TraceError("escalated must be boolean")
 
 
-def _normalize_cache_payload(payload: Mapping[str, object]) -> dict[str, str]:
+def _normalize_cache_payload(payload: Mapping[str, object]) -> dict[str, object]:
+    if isinstance(payload, Mapping) and payload.get("schema") == WORKFLOW_CACHE_SCHEMA:
+        return _normalize_workflow_cache_payload(payload)
     fields = {"schema", "provenance", "status", "response_code"}
     if not isinstance(payload, Mapping) or set(payload) != fields:
         raise TraceError("cached response fields do not match the demo schema")
@@ -531,8 +643,45 @@ def _normalize_cache_payload(payload: Mapping[str, object]) -> dict[str, str]:
     }
 
 
-def _decode_cache_payload(raw: object) -> dict[str, str]:
-    if not isinstance(raw, str) or len(raw.encode("utf-8", errors="replace")) > MAX_CACHE_RESPONSE_BYTES:
+def _normalize_workflow_cache_payload(payload: Mapping[str, object]) -> dict[str, object]:
+    fields = {"schema", "provenance", "action", "reason", "reply", "severity_pct", "severity_band"}
+    if set(payload) != fields or payload.get("provenance") != WORKFLOW_CACHE_PROVENANCE:
+        raise TraceError("cached workflow fields or provenance are invalid")
+    action, reason, reply = payload["action"], payload["reason"], payload["reply"]
+    if not isinstance(action, str) or action not in {"answer", "ask", "refer", "retake"}:
+        raise TraceError("cached workflow action is unsupported")
+    if not isinstance(reason, str) or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", reason):
+        raise TraceError("cached workflow reason is invalid")
+    if (
+        not isinstance(reply, str) or len(reply.encode("utf-8")) > 4096
+        or not reply.startswith(WORKFLOW_CACHE_PROVENANCE)
+        or "preliminary guidance" not in reply
+        or any(ord(char) < 32 and char not in "\n\t" for char in reply)
+    ):
+        raise TraceError("cached workflow reply is invalid")
+    severity, band_value = payload["severity_pct"], payload["severity_band"]
+    if severity is None:
+        if band_value is not None:
+            raise TraceError("cached workflow severity band has no percentage")
+    elif (
+        isinstance(severity, bool) or not isinstance(severity, (int, float))
+        or not math.isfinite(severity) or not 0 <= severity <= 100
+        or band_value not in {"low", "moderate", "high"}
+    ):
+        raise TraceError("cached workflow severity is invalid")
+    return {
+        "schema": WORKFLOW_CACHE_SCHEMA,
+        "provenance": WORKFLOW_CACHE_PROVENANCE,
+        "action": action,
+        "reason": reason,
+        "reply": reply,
+        "severity_pct": severity,
+        "severity_band": band_value,
+    }
+
+
+def _decode_cache_payload(raw: object) -> dict[str, object]:
+    if not isinstance(raw, str) or len(raw.encode("utf-8", errors="replace")) > MAX_WORKFLOW_CACHE_RESPONSE_BYTES:
         raise TraceError("cached response is malformed or oversized")
 
     def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -547,7 +696,11 @@ def _decode_cache_payload(raw: object) -> dict[str, str]:
         parsed = json.loads(raw, object_pairs_hook=unique_object)
     except (json.JSONDecodeError, ValueError, RecursionError):
         raise TraceError("cached response JSON is invalid") from None
-    return _normalize_cache_payload(parsed)
+    normalized = _normalize_cache_payload(parsed)
+    size_limit = MAX_WORKFLOW_CACHE_RESPONSE_BYTES if normalized["schema"] == WORKFLOW_CACHE_SCHEMA else MAX_CACHE_RESPONSE_BYTES
+    if len(raw.encode("utf-8")) > size_limit:
+        raise TraceError("cached response is oversized")
+    return normalized
 
 
 def _normalize_cache_timestamp(value: str) -> str:
@@ -612,6 +765,8 @@ def _validate_step(step: TraceStep) -> None:
         raise TraceError("step latency must be finite and non-negative")
     if type(step.retries) is not int or not 0 <= step.retries <= 2:
         raise TraceError("retry count is outside the B11 bound")
+    if step.started_at is not None:
+        _normalize_timestamp(step.started_at)
     for count in (step.tokens_in, step.tokens_out):
         if count is not None and (type(count) is not int or count < 0):
             raise TraceError("token counts must be non-negative integers")
@@ -652,6 +807,24 @@ def _validate_scan(
     ):
         raise TraceError("severity must be a finite percentage")
     _normalize_timestamp(timestamp)
+
+
+def _validate_eval_run(
+    run_id: str,
+    strategy: str,
+    git_sha: str | None,
+    metrics: Mapping[str, object],
+) -> None:
+    if not isinstance(run_id, str) or not re.fullmatch(r"[0-9a-f]{32}", run_id):
+        raise TraceError("evaluation run ID must be lowercase UUID hex")
+    if not isinstance(strategy, str) or not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", strategy):
+        raise TraceError("evaluation strategy is invalid")
+    if git_sha is not None and (
+        not isinstance(git_sha, str) or not re.fullmatch(r"[0-9a-f]{40,64}", git_sha)
+    ):
+        raise TraceError("evaluation git SHA is invalid")
+    if not isinstance(metrics, Mapping) or not metrics:
+        raise TraceError("evaluation metrics must be a non-empty mapping")
 
 
 def _normalize_timestamp(value: str) -> str:

@@ -1,0 +1,109 @@
+# DRAFT disease card (batch 1). status: draft. English and Hindi are UNREVIEWED.
+# Not production-approved farmer guidance. Hindi is a draft translation pending native-speaker review.
+# chemical_options is intentionally empty. confusable_with is intentionally empty pending agronomist input.
+id: soybean_yellow_mosaic
+crop: soybean
+names:
+  en: Yellow mosaic disease (soybean)
+  hi: सोयाबीन का पीला मोज़ेक रोग
+symptoms:
+- Small yellow patches or spots on young leaves at the start
+- Next leaves show irregular yellow and green patches alternating with each other
+- Yellowing increases and newly formed leaves may turn completely yellow
+- Severe mottling and crinkling of leaves
+- Infected plants mature late, with very few flowers and small, distorted pods
+confusable_with: []
+follow_up_questions:
+- id: patches
+  en: Do young leaves show yellow patches alternating with green patches?
+  hi: क्या नई पत्तियों पर पीले धब्बे हैं जो हरे हिस्सों के साथ बारी-बारी से दिख रहे हैं?
+- id: crinkle
+  en: Are the leaves mottled or crinkled?
+  hi: क्या पत्तियाँ धब्बेदार या सिकुड़ी हुई हैं?
+- id: whitefly
+  en: Have you seen whiteflies on the crop?
+  hi: क्या फसल पर सफ़ेद मक्खी दिख रही है?
+low_risk_steps:
+  en:
+  - Watch the crop regularly for yellow-patched leaves and whiteflies, and ask an expert as soon as symptoms are first seen.
+  hi:
+  - फसल पर नियमित नज़र रखें; पीले धब्बे या सफ़ेद मक्खी दिखते ही तुरंत विशेषज्ञ से सलाह लें।
+chemical_options: []
+when_to_refer: The source describes seed treatment and sprays against the whitefly for this disease, but this draft card gives no chemical advice. Symptoms alone do not confirm the virus involved, so ask the local KVK or agriculture officer to confirm the disease and advise.
+sources:
+- icar_iisr_soybean_bulletin_17
+reviewed_by: null
+status: draft
+region_tags:
+- national
+claim_sources:
+- claim: names.en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: names.hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: symptoms[0]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: symptoms[1]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: symptoms[2]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: symptoms[3]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: symptoms[4]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: follow_up_questions[0].en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: follow_up_questions[0].hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: follow_up_questions[1].en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: follow_up_questions[1].hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: follow_up_questions[2].en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: follow_up_questions[2].hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: low_risk_steps.en[0]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: low_risk_steps.hi[0]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+- claim: when_to_refer
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '39'
+  section: 'Major diseases of soybean and their management: 4. Yellow mosaic virus & white fly'
+review_status:
+  en: UNREVIEWED
+  hi: UNREVIEWED
+language_reviewers:
+  en: null
+  hi: null

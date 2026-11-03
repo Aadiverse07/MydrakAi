@@ -1,0 +1,114 @@
+# DRAFT disease card (batch 1). status: draft. English and Hindi are UNREVIEWED.
+# Not production-approved farmer guidance. Hindi is a draft translation pending native-speaker review.
+# chemical_options is intentionally empty. confusable_with is intentionally empty pending agronomist input.
+id: soybean_charcoal_rot
+crop: soybean
+names:
+  en: Charcoal rot (soybean)
+  hi: सोयाबीन का चारकोल रॉट (चारकोल सड़न)
+symptoms:
+- Slightly smaller leaflets than healthy plants and reduced vigour
+- Leaflets turn yellow, then brown and wilt; the brown leaves stay attached to the petioles
+- Light grey or silver discolouration in the taproot and lower stem when the plant is split open
+- Black specks (microsclerotia) visible in the stem and taproot tissue
+confusable_with: []
+follow_up_questions:
+- id: yellow_brown
+  en: Did the leaves turn yellow, then brown, and stay attached to the stalks?
+  hi: क्या पत्तियाँ पीली, फिर भूरी होकर डंठलों से लगी रह गईं?
+- id: split_stem
+  en: When the stem or root is split open, is there silvery-grey colour with black specks?
+  hi: क्या तना या जड़ चीरने पर चाँदी जैसा धूसर रंग और छोटे काले कण दिखते हैं?
+- id: stress
+  en: Did this start after hot, dry stress around flowering or pod filling?
+  hi: क्या यह फूल आने या फली भरने के समय गर्मी और सूखे के तनाव के बाद शुरू हुआ?
+low_risk_steps:
+  en:
+  - Use clean, healthy, disease-free seed from authentic sources.
+  - Avoid imbalanced fertilizer use and very dense planting; the bulletin links these to more severe disease.
+  hi:
+  - प्रमाणित/विश्वसनीय स्रोत से स्वच्छ, स्वस्थ और रोगमुक्त बीज का उपयोग करें।
+  - उर्वरक असंतुलित न दें और पौधे बहुत घने न रखें; बुलेटिन के अनुसार इनसे रोग ज़्यादा गंभीर होता है।
+chemical_options: []
+when_to_refer: The source lists seed treatments and sprays for charcoal rot, but this draft card gives no chemical advice. Ask the local KVK or agriculture officer to confirm the disease and advise.
+sources:
+- icar_iisr_soybean_bulletin_17
+reviewed_by: null
+status: draft
+region_tags:
+- national
+claim_sources:
+- claim: names.en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: names.hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: symptoms[0]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: symptoms[1]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: symptoms[2]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: symptoms[3]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: follow_up_questions[0].en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: follow_up_questions[0].hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: follow_up_questions[1].en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: follow_up_questions[1].hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: follow_up_questions[2].en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: follow_up_questions[2].hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: low_risk_steps.en[0]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: Disease management in soybean'
+- claim: low_risk_steps.en[1]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: low_risk_steps.hi[0]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: Disease management in soybean'
+- claim: low_risk_steps.hi[1]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '38'
+  section: 'Major diseases of soybean and their management: 1. Charcoal rot'
+- claim: when_to_refer
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '41'
+  section: 'Major diseases of soybean and their management: Table 9: Recommended chemicals and mode of application'
+review_status:
+  en: UNREVIEWED
+  hi: UNREVIEWED
+language_reviewers:
+  en: null
+  hi: null

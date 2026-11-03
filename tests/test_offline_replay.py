@@ -16,6 +16,9 @@ from mydrak.replay import (
     demo_cache_key,
     run_cached_replay,
     run_replay,
+    REGISTERED_DEMO_SCENARIOS,
+    run_registered_cached_replay,
+    seed_registered_demo_cache,
 )
 from mydrak.trace.store import (
     CACHE_PROVENANCE,
@@ -356,3 +359,46 @@ def test_cached_replay_rejects_unavailable_language_and_bad_fixture_key():
         run_cached_replay(key, trace_store=store, demo_mode="replay", language="hi")
     with pytest.raises(ReplayError, match="fixture ID"):
         demo_cache_key("../user/identifier")
+
+
+@pytest.mark.parametrize(
+    "fixture_id,expected_status",
+    [(fixture_id, values[0]) for fixture_id, values in REGISTERED_DEMO_SCENARIOS.items()],
+)
+def test_every_registered_replay_scenario_is_persistent_and_socket_blocked(
+    fixture_id, expected_status, tmp_path, monkeypatch,
+):
+    def deny(*args, **kwargs):
+        raise AssertionError("cached replay must not open sockets or call providers")
+
+    import mydrak.replay.replay as replay_module
+    monkeypatch.setattr(socket, "socket", deny)
+    monkeypatch.setattr(socket, "create_connection", deny)
+    monkeypatch.setattr(replay_module, "coordinate_offline_case", deny)
+    database = tmp_path / "registered-replay.sqlite"
+    store = TraceStore(database)
+    assert seed_registered_demo_cache(store) == 4
+    assert seed_registered_demo_cache(store) == 0
+    store.close()
+    reopened = TraceStore(database)
+    result = run_registered_cached_replay(
+        fixture_id, trace_store=reopened, demo_mode="replay",
+    )
+    assert result.status == expected_status
+    assert result.provenance == CACHE_PROVENANCE
+    assert "SYNTHETIC / MOCK" in result.reply or "synthetic demo only" in result.reply
+    assert "replay_cache_read" in {
+        step["step_name"] for step in reopened.get_steps(
+            reopened._connection.execute(
+                "SELECT case_id FROM cases ORDER BY ts DESC LIMIT 1"
+            ).fetchone()[0]
+        )
+    }
+
+
+def test_registered_replay_ids_are_bounded_and_missing_entries_fail_closed():
+    store = TraceStore(":memory:")
+    with pytest.raises(ReplayError, match="registered"):
+        run_registered_cached_replay("synthetic-unregistered-99", trace_store=store)
+    with pytest.raises(ReplayError, match="unavailable"):
+        run_registered_cached_replay("synthetic-answer-01", trace_store=store)

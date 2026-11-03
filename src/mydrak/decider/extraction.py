@@ -13,7 +13,9 @@ from numbers import Real
 from typing import Literal
 
 from mydrak.decider.policy import Action, decide
-from mydrak.decider.signals import combine, s2_symptom_overlap
+from mydrak.decider.signals import (
+    aggregate_stated_confidence, combine, s2_symptom_overlap,
+)
 from mydrak.trace.store import TraceError, TraceStore
 
 
@@ -104,11 +106,11 @@ def extract_quality() -> SignalMeasurement:
 
 
 def extract_confidence(value: object) -> SignalMeasurement:
-    """Extract numeric B3 S4; band-to-number mapping is unspecified."""
+    """Extract one numeric B3 S4 value; paired text bands use the mapper below."""
     if value is None:
         return unavailable("model_confidence_unavailable_t05")
     if isinstance(value, str):
-        return unavailable("confidence_band_mapping_unresolved")
+        return unavailable("confidence_band_requires_two_sample_mapping")
     if isinstance(value, bool) or not isinstance(value, Real):
         return unavailable("model_confidence_invalid")
     try:
@@ -118,6 +120,20 @@ def extract_confidence(value: object) -> SignalMeasurement:
     if not valid:
         return unavailable("model_confidence_out_of_range")
     return SignalMeasurement(float(value))
+
+
+def extract_sample_confidence(
+    first: object,
+    second: object,
+    mapping: Mapping[str, object] | None,
+) -> SignalMeasurement:
+    """Extract B3 S4 from two samples using the configured lower-value rule."""
+    if mapping is None:
+        return unavailable("confidence_mapping_unavailable")
+    value = aggregate_stated_confidence(first, second, mapping)
+    if value is None:
+        return unavailable("confidence_band_missing_or_invalid")
+    return SignalMeasurement(value, "configured_two_sample_lower_value")
 
 
 @dataclass(frozen=True)

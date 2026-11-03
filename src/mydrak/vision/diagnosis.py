@@ -102,11 +102,21 @@ def _text_list(value: object, field: str) -> tuple[str, ...]:
     return tuple(result)
 
 
+def _valid_confidence_bands(values: Collection[str]) -> frozenset[str]:
+    if isinstance(values, (str, bytes)) or not isinstance(values, Collection):
+        raise ValueError("confidence band vocabulary is invalid")
+    items = tuple(values)
+    if not items or any(not isinstance(value, str) or not value for value in items):
+        raise ValueError("confidence band vocabulary is invalid")
+    return frozenset(items)
+
+
 def validate_diagnosis_json(
     raw: object,
     *,
     supported_crops: Collection[str],
     disease_ids: Collection[str],
+    confidence_bands: Collection[str] | None = None,
 ) -> DiagnosisOutput:
     """Parse and validate the exact B8 object; errors never include raw output."""
     crops = _valid_vocabulary(supported_crops, field="crop")
@@ -146,6 +156,11 @@ def validate_diagnosis_json(
         raise ValueError("non-plant output must not assert plant symptoms or prompts")
 
     confidence = data["stated_confidence"]
+    bands = (
+        {_EXPLICIT_CONFIDENCE_EXAMPLE}
+        if confidence_bands is None
+        else _valid_confidence_bands(confidence_bands)
+    )
     if isinstance(confidence, bool):
         raise ValueError("stated_confidence has an unsupported type")
     if isinstance(confidence, Real):
@@ -156,8 +171,7 @@ def validate_diagnosis_json(
         if not valid_confidence:
             raise ValueError("stated_confidence is outside 0..1")
         confidence = float(confidence)
-    elif confidence != _EXPLICIT_CONFIDENCE_EXAMPLE:
-        # B8 shows "medium" but defines no complete band vocabulary.
+    elif not isinstance(confidence, str) or confidence not in bands:
         raise ValueError("stated_confidence band is not specified")
 
     return DiagnosisOutput(
@@ -177,6 +191,7 @@ def run_diagnosis_validation(
     *,
     supported_crops: Collection[str],
     disease_ids: Collection[str],
+    confidence_bands: Collection[str] | None = None,
 ) -> DiagnosisResult:
     """Call an injected provider and allow exactly one repair for invalid JSON.
 
@@ -198,7 +213,8 @@ def run_diagnosis_validation(
 
     try:
         output = validate_diagnosis_json(
-            raw, supported_crops=supported_crops, disease_ids=disease_ids
+            raw, supported_crops=supported_crops, disease_ids=disease_ids,
+            confidence_bands=confidence_bands,
         )
         return DiagnosisResult(DiagnosisStatus.VALID, output, "validated")
     except ValueError:
@@ -213,7 +229,8 @@ def run_diagnosis_validation(
         return DiagnosisResult(DiagnosisStatus.UNAVAILABLE, None, "repair_provider_failure", REPAIR_ATTEMPTS)
     try:
         output = validate_diagnosis_json(
-            repaired, supported_crops=supported_crops, disease_ids=disease_ids
+            repaired, supported_crops=supported_crops, disease_ids=disease_ids,
+            confidence_bands=confidence_bands,
         )
     except ValueError:
         return DiagnosisResult(DiagnosisStatus.UNKNOWN, None, "invalid_after_repair", REPAIR_ATTEMPTS)

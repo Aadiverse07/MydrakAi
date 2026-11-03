@@ -39,6 +39,9 @@ PUBLIC_TEST_EVIDENCE = ProcessingEvidence(
     public_test_provenance_verified=True,
 )
 SYNTHETIC_CARD = {
+    # Test-only rendering gate values; no production reviewer approval implied.
+    "status": "verified",
+    "review_status": {"en": "REVIEWED", "hi": "REVIEWED"},
     "follow_up_questions": [
         {"id": "q1", "en": "Synthetic question one?"},
         {"id": "q2", "en": "Synthetic question two?"},
@@ -258,9 +261,10 @@ def test_coordinator_routes_mock_tier1_results_and_s3_fails_closed(monkeypatch):
     assert captured["signals"].s1.value == 1.0
     assert captured["signals"].s2.value == 1.0
     assert captured["signals"].s3.value is None
+    assert captured["signals"].s4.value == 0.7
     assert result.action == "refer"
     assert result.score is None
-    assert result.unavailable_signals == ("s3", "s4")
+    assert result.unavailable_signals == ("s3",)
 
 
 def test_coordinator_rejects_nonvalidated_tier1_result():

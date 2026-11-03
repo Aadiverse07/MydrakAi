@@ -9,6 +9,7 @@ is exposed here.
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 import time
 import re
 from typing import Any, Literal
@@ -18,11 +19,13 @@ from mydrak.decider.extraction import (
     DecisionResult,
     SignalSet,
     extract_agreement,
+    extract_sample_confidence,
     extract_kb_match,
     extract_quality,
     route_signals,
     unavailable,
 )
+from mydrak.decider.signals import validate_confidence_band_mapping
 from mydrak.intake.adapter import IntakeError, process_intake
 from mydrak.privacy.data_policy import DataClass, ProcessingEvidence
 from mydrak.reply.composer import ReplyError, compose_reply
@@ -36,6 +39,7 @@ from mydrak.workflow.followup import (
     accept_followup_answer,
     begin_followup,
 )
+from mydrak.util.config import load_yaml
 
 SYNTHETIC_FIXTURE_PROVENANCE = "synthetic-offline-fixture"
 
@@ -262,15 +266,16 @@ def coordinate_mock_tier1_results(
     cards: Sequence[Mapping[str, object]],
     weights: Mapping[str, float],
     thresholds: Mapping[str, object],
+    confidence_mapping: Mapping[str, object] | None = None,
     escalated: bool = False,
     followups_used: int = 0,
 ) -> DecisionResult:
     """Route two validated synthetic Tier-1 results through the Decider.
 
     The first result supplies the observed-symptom phrases for this offline
-    adapter. S4 aggregation is unavailable, and S3 remains unavailable until
-    T04 provides measured image quality; therefore route_signals fails closed.
-    No provider is created or invoked here.
+    adapter. S4 uses the supplied config mapping and the lower sample value.
+    S3 remains unavailable until T04 provides measured image quality, so the
+    route remains fail-closed. No provider is created or invoked here.
     """
     results = (first, second)
     if any(
@@ -282,6 +287,14 @@ def coordinate_mock_tier1_results(
         raise OfflineCoordinatorError("two validated Tier-1 results are required")
     left, right = first.output, second.output
     assert isinstance(left, DiagnosisOutput) and isinstance(right, DiagnosisOutput)
+    if confidence_mapping is None:
+        config_path = Path(__file__).resolve().parents[3] / "config" / "thresholds.yaml"
+        try:
+            confidence_mapping = validate_confidence_band_mapping(
+                load_yaml(config_path).get("confidence_bands"),
+            )
+        except (OSError, TypeError, ValueError):
+            raise OfflineCoordinatorError("confidence band mapping config is invalid") from None
     s1 = extract_agreement(
         {"crop": left.crop, "disease": left.issue},
         {"crop": right.crop, "disease": right.issue},
@@ -295,7 +308,9 @@ def coordinate_mock_tier1_results(
             s1=s1,
             s2=s2,
             s3=extract_quality(),
-            s4=unavailable("tier1_confidence_aggregation_unresolved"),
+            s4=extract_sample_confidence(
+                left.stated_confidence, right.stated_confidence, confidence_mapping,
+            ),
         ),
         weights=weights,
         thresholds=thresholds,

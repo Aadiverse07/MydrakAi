@@ -1,0 +1,119 @@
+# DRAFT disease card (batch 1). status: draft. English and Hindi are UNREVIEWED.
+# Not production-approved farmer guidance. Hindi is a draft translation pending native-speaker review.
+# chemical_options is intentionally empty. confusable_with is intentionally empty pending agronomist input.
+id: tomato_fusarium_wilt
+crop: tomato
+names:
+  en: Fusarium wilt (tomato)
+  hi: टमाटर का फ्यूजेरियम उकठा (विल्ट)
+symptoms:
+- Clearing of the veinlets and yellowing of the leaves
+- Petioles and leaves droop and wilt
+- In the field, the lower leaves turn yellow first and affected leaflets wilt and die
+- At a later stage the vascular system turns brown
+- Plants become stunted and die
+confusable_with: []
+follow_up_questions:
+- id: lower_yellow
+  en: Did the lower leaves turn yellow first?
+  hi: क्या सबसे पहले नीचे की पत्तियाँ पीली पड़ीं?
+- id: veins_droop
+  en: Do the veins look clear and the leaf stalks droop?
+  hi: क्या पत्तियों की नसें साफ़/पारदर्शी दिख रही हैं और डंठल झुक रहे हैं?
+- id: brown_inside
+  en: When the stem is cut, does the inside look brown?
+  hi: क्या तना काटने पर अंदर का हिस्सा भूरा दिखता है?
+low_risk_steps:
+  en:
+  - Remove and destroy the affected plants.
+  - Rotate with a non-host crop such as cereals.
+  hi:
+  - प्रभावित पौधों को हटाकर नष्ट करें।
+  - अनाज जैसी किसी ऐसी फसल के साथ फसल चक्र अपनाएँ जिस पर यह रोग नहीं लगता।
+chemical_options: []
+when_to_refer: The source describes a drench treatment for this disease, but this draft card gives no treatment advice. Ask the local KVK or agriculture officer to confirm the disease and advise.
+sources:
+- icar_tomato_hort_ecourse
+reviewed_by: null
+status: draft
+region_tags:
+- national
+claim_sources:
+- claim: names.en
+  source_id: icar_tomato_hort_ecourse
+  page: '110'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt (heading)'
+- claim: names.hi
+  source_id: icar_tomato_hort_ecourse
+  page: '110'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt (heading)'
+- claim: symptoms[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Symptom'
+- claim: symptoms[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Symptom'
+- claim: symptoms[2]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Symptom'
+- claim: symptoms[3]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Symptom'
+- claim: symptoms[4]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Symptom'
+- claim: follow_up_questions[0].en
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Symptom'
+- claim: follow_up_questions[0].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Symptom'
+- claim: follow_up_questions[1].en
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Symptom'
+- claim: follow_up_questions[1].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Symptom'
+- claim: follow_up_questions[2].en
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Symptom'
+- claim: follow_up_questions[2].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Symptom'
+- claim: low_risk_steps.en[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Management'
+- claim: low_risk_steps.en[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Management'
+- claim: low_risk_steps.hi[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Management'
+- claim: low_risk_steps.hi[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Management'
+- claim: when_to_refer
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Fusarium Wilt, Management'
+review_status:
+  en: UNREVIEWED
+  hi: UNREVIEWED
+language_reviewers:
+  en: null
+  hi: null

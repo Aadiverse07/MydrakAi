@@ -44,6 +44,18 @@ def _safety_text(safety_card: Mapping[str, Any], key: str) -> str:
     return _text(safety_card.get(key), key)
 
 
+def _require_approved_card(card: Mapping[str, Any]) -> None:
+    """Fail closed before rendering any farmer-facing disease-card content."""
+    review_status = card.get("review_status")
+    if (
+        card.get("status") != "verified"
+        or not isinstance(review_status, Mapping)
+        or review_status.get("en") != "REVIEWED"
+        or review_status.get("hi") != "REVIEWED"
+    ):
+        raise ReplyError("KB card is not approved for farmer-facing replies")
+
+
 def _severity(value: Any) -> str:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ReplyError("severity_pct must be a finite number from 0 to 100")
@@ -96,6 +108,7 @@ def compose_reply(
     templates = TEMPLATES[language]
 
     if action == "answer":
+        _require_approved_card(card)
         names = _localized(card, "names", language)
         issue = _text(names.get(language), "English issue name")
         crop = _text(card.get("crop"), "crop")
@@ -119,6 +132,7 @@ def compose_reply(
         return templates["answer"].format(**values)
 
     if action == "ask":
+        _require_approved_card(card)
         if not isinstance(question_id, str) or not question_id:
             raise ReplyError("question_id is required for an ask reply")
         question = _follow_up(card, question_id)

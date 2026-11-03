@@ -74,13 +74,11 @@ def test_config_from_mapping():
         SamClientConfig.from_mapping(["not-a-mapping"])
 
 
-def test_repo_placeholders_rejected():
-    sam_section = yaml.safe_load(open(REPO_ROOT / "config" / "models.yaml"))["sam"]
-    assert "TODO" in repr(sam_section.values())
+def test_sam_config_rejects_todo_placeholder():
     with pytest.raises(SamConfigError):
-        SamClientConfig.from_mapping({**valid_kwargs(), "model_id": sam_section["model_id"]})
+        SamClientConfig.from_mapping({**valid_kwargs(), "model_id": "TODO(verify)"})
     with pytest.raises(SamConfigError):
-        SamClientConfig.from_mapping({**valid_kwargs(), "endpoint": sam_section["endpoint"]})
+        SamClientConfig.from_mapping({**valid_kwargs(), "endpoint": "TODO(verify)"})
 
 
 @pytest.mark.parametrize("field,value", [

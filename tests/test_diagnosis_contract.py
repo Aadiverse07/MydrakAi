@@ -94,6 +94,25 @@ def test_only_explicitly_demonstrated_confidence_band_is_accepted_but_unmapped_t
         validate(raw_output({**data, "stated_confidence": "high"}))
 
 
+@pytest.mark.parametrize("band", ["low", "medium", "high"])
+def test_configured_s4_bands_are_accepted_by_diagnosis_contract(band):
+    output = validate_diagnosis_json(
+        raw_output({**SYNTHETIC_OUTPUT, "stated_confidence": band}),
+        supported_crops=("test_crop",), disease_ids=("test_issue", "test_alternative"),
+        confidence_bands=("low", "medium", "high"),
+    )
+    assert output.stated_confidence == band
+
+
+def test_diagnosis_contract_rejects_band_outside_configured_vocabulary():
+    with pytest.raises(ValueError, match="band is not specified"):
+        validate_diagnosis_json(
+            raw_output({**SYNTHETIC_OUTPUT, "stated_confidence": "unlisted"}),
+            supported_crops=("test_crop",), disease_ids=("test_issue", "test_alternative"),
+            confidence_bands=("low", "medium", "high"),
+        )
+
+
 @pytest.mark.parametrize("field", sorted({
     "plant_visible", "crop", "issue", "alternatives", "symptoms_observed",
     "image_issues", "stated_confidence", "segment_prompts",
@@ -121,6 +140,7 @@ def test_unexpected_policy_or_routing_fields_are_rejected():
         ("symptoms_observed", [""]),
         ("image_issues", "not a list"),
         ("segment_prompts", [None]),
+        ("stated_confidence", ["medium"]),
     ],
 )
 def test_wrong_types_or_unallowed_vocabulary_rejected(field, value):

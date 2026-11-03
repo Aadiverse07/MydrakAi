@@ -1,25 +1,25 @@
 - id: icar_cpri_gap_bulletin_108
-  title: ICAR-CPRI GAP Bulletin 108
+  title: Good Agricultural Practices (GAP) for Production of Potato Crop (Technical Bulletin No. 108)
   publisher: ICAR-CPRI
   region_tag: national
   tier: primary
   local_path: null
-  retrieved: false
-  verified_by_user: false
-  notes: Candidate title supplied by the project owner; source not retrieved and title not verified.
-  title_verified: false
-  edition_year: null
+  retrieved: true
+  verified_by_user: true
+  notes: 'Title, publisher and Technical Bulletin No. 108 read from the PDF cover/title pages; ''Printed: January, 2020 (500 copies)''. Authors list begins Sanjay Rawal. Page numbers cited on cards are the printed page numbers at the foot of each page (PDF page number is printed number + 11). PDF held by the project owner, not stored in the repo. Title and edition year confirmed by the user against the PDF on 2026-11-03.'
+  title_verified: true
+  edition_year: 2020
 - id: icar_iisr_soybean_bulletin_17
-  title: ICAR-IISR Soybean Extension Bulletin 17
+  title: Improved Practices & Methods for Soybean Production and Technical Recommendations (Extension Bulletin 17, Revised Edition 2022)
   publisher: ICAR-IISR
   region_tag: national
   tier: primary
   local_path: null
-  retrieved: false
-  verified_by_user: false
-  notes: Candidate title supplied by the project owner; source not retrieved and title not verified.
-  title_verified: false
-  edition_year: null
+  retrieved: true
+  verified_by_user: true
+  notes: 'BIBLIOGRAPHIC DISCREPANCY, UNRESOLVED: the cover and title page say Extension Bulletin 17 (Revised Edition 2022), but the ''Correct Citation'' on the title page reads ''Soybean Production: Package of practices and Technical Recommendations. Extension Bulletin No. 16'' (Pp: 59). Kept as Bulletin 17 per the cover; needs the user/publisher to confirm. Cards cite the printed page numbers at the foot of each page. The page printed 39 also shows a stray ''33'' at its top. PDF held by the project owner, not stored in the repo. Title and edition year confirmed by the user against the PDF on 2026-11-03.'
+  title_verified: true
+  edition_year: 2022
 - id: pau_package_of_practices
   title: PAU Package of Practices
   publisher: PAU
@@ -86,3 +86,25 @@
   notes: Cross-check only; never cite. Source not retrieved and title not verified.
   title_verified: false
   edition_year: null
+- id: icar_iivr_viruses_tb75
+  title: 'Viruses of Vegetable Crops: Symptomatology, Diagnostics and Management (Technical Bulletin No. 75)'
+  publisher: ICAR-IIVR
+  region_tag: national
+  tier: primary
+  local_path: null
+  retrieved: true
+  verified_by_user: true
+  notes: Title, publisher (ICAR - Indian Institute of Vegetable Research, Varanasi) and Technical Bulletin No. 75 read from the PDF cover. Edition year 2017 read from the PDF and confirmed by the user on 2026-11-03. Printed page numbers cited. PDF held by the project owner, not stored in the repo. Title and edition year confirmed by the user against the PDF on 2026-11-03.
+  title_verified: true
+  edition_year: 2017
+- id: icar_tomato_hort_ecourse
+  title: Disease of Horticultural Crops & their Management (ICAR e-Course for B.Sc (Agriculture) and B.Tech (Agriculture))
+  publisher: ICAR e-Course
+  region_tag: national
+  tier: supplementary
+  local_path: null
+  retrieved: true
+  verified_by_user: true
+  notes: 'Supplementary teaching e-course. Title read from the PDF cover; No author names found. Edition year 2020 read from the PDF and confirmed by the user on 2026-11-03. The PDF is hosted on the RVSKVV website; hosting on that site must NOT be treated as RVSKVV authorship, so no author or publisher is attributed beyond ''ICAR e-Course''. Tomato lecture is Lecture 14, printed pages 110-120. Possible source inconsistency: the Early Blight text on printed page 112 mentions ''the late blight fungus''. PDF held by the project owner, not stored in the repo. Title and edition year confirmed by the user against the PDF on 2026-11-03.'
+  title_verified: true
+  edition_year: 2020

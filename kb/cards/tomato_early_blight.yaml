@@ -1,0 +1,119 @@
+# DRAFT disease card (batch 1). status: draft. English and Hindi are UNREVIEWED.
+# Not production-approved farmer guidance. Hindi is a draft translation pending native-speaker review.
+# chemical_options is intentionally empty. confusable_with is intentionally empty pending agronomist input.
+id: tomato_early_blight
+crop: tomato
+names:
+  en: Early blight (tomato)
+  hi: टमाटर का अगेती झुलसा (अर्ली ब्लाइट)
+symptoms:
+- Small black lesions, mostly on the older leaves
+- Spots enlarge and show concentric rings in a bull's-eye pattern in the centre
+- Tissue around the spots may turn yellow
+- Stem lesions similar to leaf lesions, sometimes girdling the plant near the soil line
+- Fruit lesions with concentric rings, usually starting at the calyx or stem attachment
+confusable_with: []
+follow_up_questions:
+- id: rings
+  en: Do the spots have rings inside them, like a bull's-eye?
+  hi: क्या धब्बों के अंदर बैल की आँख जैसे गोल छल्ले दिखते हैं?
+- id: older_leaves
+  en: Are the spots mostly on the older, lower leaves?
+  hi: क्या धब्बे ज़्यादातर नीचे की पुरानी पत्तियों पर हैं?
+- id: stem_fruit
+  en: Are there similar spots on the stem or on the fruit near the stalk?
+  hi: क्या तने पर या फल में डंठल के पास भी ऐसे धब्बे हैं?
+low_risk_steps:
+  en:
+  - Remove and destroy crop debris.
+  - Practise crop rotation instead of growing tomato in the same field again.
+  hi:
+  - फसल के अवशेष हटाकर नष्ट करें।
+  - उसी खेत में बार-बार टमाटर न लगाएँ; फसल चक्र अपनाएँ।
+chemical_options: []
+when_to_refer: The source describes a fungicide spray for this disease, but this draft card gives no spray advice. Ask the local KVK or agriculture officer to confirm the disease and advise on any spray.
+sources:
+- icar_tomato_hort_ecourse
+reviewed_by: null
+status: draft
+region_tags:
+- national
+claim_sources:
+- claim: names.en
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms'
+- claim: names.hi
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms'
+- claim: symptoms[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms'
+- claim: symptoms[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms'
+- claim: symptoms[2]
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms'
+- claim: symptoms[3]
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms (continued) and Management'
+- claim: symptoms[4]
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms (continued) and Management'
+- claim: follow_up_questions[0].en
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms'
+- claim: follow_up_questions[0].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms'
+- claim: follow_up_questions[1].en
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms'
+- claim: follow_up_questions[1].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '111'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms'
+- claim: follow_up_questions[2].en
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms (continued) and Management'
+- claim: follow_up_questions[2].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms (continued) and Management'
+- claim: low_risk_steps.en[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms (continued) and Management'
+- claim: low_risk_steps.en[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms (continued) and Management'
+- claim: low_risk_steps.hi[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms (continued) and Management'
+- claim: low_risk_steps.hi[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms (continued) and Management'
+- claim: when_to_refer
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Early Blight, Symptoms (continued) and Management'
+review_status:
+  en: UNREVIEWED
+  hi: UNREVIEWED
+language_reviewers:
+  en: null
+  hi: null

@@ -1,0 +1,154 @@
+# DRAFT disease card (batch 1). status: draft. English and Hindi are UNREVIEWED.
+# Not production-approved farmer guidance. Hindi is a draft translation pending native-speaker review.
+# chemical_options is intentionally empty. confusable_with is intentionally empty pending agronomist input.
+id: potato_late_blight
+crop: potato
+names:
+  en: Late blight (potato)
+  hi: आलू का पछेती झुलसा (लेट ब्लाइट)
+symptoms:
+- Pale green, irregular spots on leaves that enlarge into large water-soaked lesions
+- Affects all plant parts, especially stem, leaves and tubers
+- Water-soaked patches with whitish cottony growth along lesion margins on the underside of leaflets in the early morning
+- Tuber surface with hard depressions with a purplish tinge; rusty brown discolouration of the flesh
+confusable_with: []
+follow_up_questions:
+- id: water_soaked
+  en: Are there pale green, irregular spots turning into large water-soaked patches?
+  hi: क्या पत्तियों पर हल्के हरे, अनियमित धब्बे हैं जो पानी भरे बड़े धब्बों में बदल रहे हैं?
+- id: cottony
+  en: In the early morning, is there whitish cottony growth under the leaflets?
+  hi: क्या सुबह के समय पत्ती के नीचे सफ़ेद रुई जैसी फफूँद दिखती है?
+- id: tubers
+  en: Do the tubers show hard depressions or rusty brown flesh?
+  hi: क्या कंदों पर कठोर दबे हुए धब्बे या अंदर जंग जैसा भूरा रंग है?
+low_risk_steps:
+  en:
+  - Plant only disease-free, healthy seed tubers.
+  - Remove infected tubers from the seed and the field and bury them in soil.
+  - Choose well-drained soil, destroy plant debris and use high ridging.
+  - Scout the field regularly so the first infected plants are found early.
+  - Stop irrigation when conditions favour late blight.
+  - Follow the late blight forecasting messages from ICAR-CPRI during the crop season.
+  hi:
+  - रोगमुक्त, स्वस्थ बीज कंद ही लगाएँ।
+  - संक्रमित कंदों को बीज और खेत से हटाकर मिट्टी में दबा दें।
+  - अच्छी जल-निकासी वाली मिट्टी चुनें, पौधों के अवशेष नष्ट करें और ऊँची मेड़ें बनाएँ।
+  - खेत की नियमित निगरानी करें, ताकि पहला संक्रमण जल्दी पता चल जाए।
+  - जब मौसम पछेती झुलसा के अनुकूल हो, तब सिंचाई रोक दें।
+  - फसल के मौसम में ICAR-CPRI के पूर्वानुमान संदेशों का पालन करें।
+chemical_options: []
+when_to_refer: The source describes protective and curative fungicide sprays for late blight, but this draft card gives no spray advice. Ask the local KVK or agriculture officer to confirm the disease and advise on any spray.
+sources:
+- icar_cpri_gap_bulletin_108
+reviewed_by: null
+status: draft
+region_tags:
+- national
+claim_sources:
+- claim: names.en
+  source_id: icar_cpri_gap_bulletin_108
+  page: '127'
+  section: '13. Disease Management: Late Blight'
+- claim: names.hi
+  source_id: icar_cpri_gap_bulletin_108
+  page: '127'
+  section: '13. Disease Management: Late Blight'
+- claim: symptoms[0]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '127'
+  section: '13. Disease Management: Late Blight'
+- claim: symptoms[1]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '127'
+  section: '13. Disease Management: Late Blight'
+- claim: symptoms[2]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '160'
+  section: 'Annexure 12: Common diseases in potato with their symptoms'
+- claim: symptoms[3]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '160'
+  section: 'Annexure 12: Common diseases in potato with their symptoms'
+- claim: follow_up_questions[0].en
+  source_id: icar_cpri_gap_bulletin_108
+  page: '127'
+  section: '13. Disease Management: Late Blight'
+- claim: follow_up_questions[0].hi
+  source_id: icar_cpri_gap_bulletin_108
+  page: '127'
+  section: '13. Disease Management: Late Blight'
+- claim: follow_up_questions[1].en
+  source_id: icar_cpri_gap_bulletin_108
+  page: '160'
+  section: 'Annexure 12: Common diseases in potato with their symptoms'
+- claim: follow_up_questions[1].hi
+  source_id: icar_cpri_gap_bulletin_108
+  page: '160'
+  section: 'Annexure 12: Common diseases in potato with their symptoms'
+- claim: follow_up_questions[2].en
+  source_id: icar_cpri_gap_bulletin_108
+  page: '160'
+  section: 'Annexure 12: Common diseases in potato with their symptoms'
+- claim: follow_up_questions[2].hi
+  source_id: icar_cpri_gap_bulletin_108
+  page: '160'
+  section: 'Annexure 12: Common diseases in potato with their symptoms'
+- claim: low_risk_steps.en[0]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '127'
+  section: '13. Disease Management: Late Blight'
+- claim: low_risk_steps.en[1]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '127'
+  section: '13. Disease Management: Late Blight'
+- claim: low_risk_steps.en[2]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Late Blight (cultural practices)'
+- claim: low_risk_steps.en[3]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Late Blight (cultural practices)'
+- claim: low_risk_steps.en[4]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Late Blight (cultural practices)'
+- claim: low_risk_steps.en[5]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Late Blight (cultural practices)'
+- claim: low_risk_steps.hi[0]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '127'
+  section: '13. Disease Management: Late Blight'
+- claim: low_risk_steps.hi[1]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '127'
+  section: '13. Disease Management: Late Blight'
+- claim: low_risk_steps.hi[2]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Late Blight (cultural practices)'
+- claim: low_risk_steps.hi[3]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Late Blight (cultural practices)'
+- claim: low_risk_steps.hi[4]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Late Blight (cultural practices)'
+- claim: low_risk_steps.hi[5]
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Late Blight (cultural practices)'
+- claim: when_to_refer
+  source_id: icar_cpri_gap_bulletin_108
+  page: '128'
+  section: '13. Disease Management: Late Blight (cultural practices)'
+review_status:
+  en: UNREVIEWED
+  hi: UNREVIEWED
+language_reviewers:
+  en: null
+  hi: null
