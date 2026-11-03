@@ -1,0 +1,139 @@
+# DRAFT disease card (batch 1). status: draft. English and Hindi are UNREVIEWED.
+# Not production-approved farmer guidance. Hindi is a draft translation pending native-speaker review.
+# chemical_options is intentionally empty. confusable_with is intentionally empty pending agronomist input.
+id: soybean_rust
+crop: soybean
+names:
+  en: Rust (soybean)
+  hi: सोयाबीन का गेरुआ (रस्ट) रोग
+symptoms:
+- Very often seen at the flowering stage
+- Initially chlorotic grey-brown spots on the leaves, abundant on the lower surface
+- Spots increase in size to form pustules
+- Loose brown powder from ruptured pustules is a characteristic symptom
+- Leaves turn brown in a short time, with early defoliation
+confusable_with: []
+follow_up_questions:
+- id: underside
+  en: Are there grey-brown spots, mostly on the underside of the leaves?
+  hi: क्या पत्तियों के निचले हिस्से पर धूसर-भूरे धब्बे हैं?
+- id: powder
+  en: Does loose brown powder come off the leaves?
+  hi: क्या पत्तियों से ढीला भूरा पाउडर झड़ता है?
+- id: weather
+  en: Did this start around flowering, after cool, humid, rainy or foggy weather?
+  hi: क्या यह फूल आने के समय ठंडे, नम, बारिश या कोहरे वाले मौसम के बाद शुरू हुआ?
+low_risk_steps:
+  en:
+  - Grow soybean only in the kharif season; soybean in rabi and summer keeps the rust cycle going.
+  - Remove self-grown soybean plants of the rabi season.
+  - Do not use seed from an affected area for sowing in the next season.
+  - Use the resistant or tolerant varieties listed in the bulletin.
+  hi:
+  - सोयाबीन केवल खरीफ मौसम में उगाएँ; रबी और ग्रीष्म में उगाने से रोग का चक्र चलता रहता है।
+  - रबी मौसम के स्वतः उगे सोयाबीन पौधों को हटा दें।
+  - प्रभावित क्षेत्र के बीज को अगले मौसम की बुवाई के लिए इस्तेमाल न करें।
+  - बुलेटिन में दी गई प्रतिरोधी या सहनशील किस्मों का उपयोग करें।
+chemical_options: []
+when_to_refer: The source lists sprays for rust, but this draft card gives no spray advice. Ask the local KVK or agriculture officer to confirm the disease and advise on any spray.
+sources:
+- icar_iisr_soybean_bulletin_17
+reviewed_by: null
+status: draft
+region_tags:
+- national
+claim_sources:
+- claim: names.en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: names.hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: symptoms[0]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: symptoms[1]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: symptoms[2]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: symptoms[3]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: symptoms[4]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: follow_up_questions[0].en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: follow_up_questions[0].hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: follow_up_questions[1].en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: follow_up_questions[1].hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: follow_up_questions[2].en
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: follow_up_questions[2].hi
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: low_risk_steps.en[0]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: low_risk_steps.en[1]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: low_risk_steps.en[2]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: low_risk_steps.en[3]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: low_risk_steps.hi[0]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: low_risk_steps.hi[1]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: low_risk_steps.hi[2]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: low_risk_steps.hi[3]
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '40'
+  section: 'Major diseases of soybean and their management: 5. Rust'
+- claim: when_to_refer
+  source_id: icar_iisr_soybean_bulletin_17
+  page: '41'
+  section: 'Major diseases of soybean and their management: Table 9: Recommended chemicals and mode of application'
+review_status:
+  en: UNREVIEWED
+  hi: UNREVIEWED
+language_reviewers:
+  en: null
+  hi: null

@@ -1,6 +1,8 @@
 # T06 Disease-Card Content Plan and Readiness
 
-Status: **BLOCKED pending scope and evidence decisions.** This is a planning document, not a disease-card source or approval record.
+Status: **PARTIAL; production release remains BLOCKED pending scope, source,
+agronomy, and language-review decisions.** This is a planning document, not a
+disease-card source or approval record.
 
 ## Specification requirements
 
@@ -20,11 +22,35 @@ B6 further requires treatment text to come only from cards; Hindi text must be p
 
 ## Current repository evidence
 
-- `kb/cards/` contains `general_safety.yaml` and `README.md`, but no production disease cards. The general safety card is not a disease card.
+- `kb/cards/` now contains 10 Batch 1 source-cited disease-card drafts, plus
+  `general_safety.yaml` and `README.md`. All 10 drafts structurally validate
+  through `load_disease_card()` against the updated registry. They remain
+  `status: draft`, both languages are `UNREVIEWED`, reviewers are null, and
+  `chemical_options` is empty. The safety card is not a disease card.
+- Four Batch 1 sources have `retrieved: true` and `title_verified: true`; their
+  title/year metadata is now `verified_by_user: true` per owner confirmation on
+  2026-11-03. The other six records remain `verified_by_user: false`,
+  unretrieved, and title-unverified. Source PDFs are not stored in the
+  repository, so Codex did not independently compare card claims or printed
+  page locators against them.
+- The supplied notes report the soybean cover/title as Bulletin 17 (Revised
+  Edition 2022) while its “Correct Citation” says Bulletin No. 16. This remains
+  unresolved. They also report the tomato e-course is hosted on the RVSKVV
+  website; hosting is not evidence of RVSKVV authorship. Preserve this caveat.
 - `validate_disease_card()` / `load_disease_card()` check structure. The non-empty chemical-option shape `{text, source, label_instruction}` is explicitly a project-local minimum because B6 does not define that record shape. Validation does not assess source quality or reviewer qualifications.
-- Tests in `tests/test_disease_card_schema.py` use synthetic placeholders only.
+- `tests/test_disease_card_schema.py` retains synthetic schema tests and now
+  checks the 10-record registry; `tests/test_disease_cards_batch1.py` validates
+  the supplied draft inventory and review/source gates.
 - T05 `validate_diagnosis_json()` accepts `supported_crops` and `disease_ids` from its caller; no approved production vocabulary is wired to cards.
-- T11 `extract_kb_match()` returns 0 for a no-card label and computes overlap for a supplied matching card using the project-approved S2 contract: distinct observed phrases that exactly match normalized card phrases divided by distinct normalized observed phrases. Normalization lowercases, trims, collapses whitespace, and turns punctuation into word boundaries. Extra card phrases do not affect the denominator; no observations return unavailable. This is a project-local decision, not a claim that B3 specifies those mechanics. No production disease-card corpus exists.
+- T11 `extract_kb_match()` returns 0 for a no-card label and computes overlap for a supplied matching card using the project-approved S2 contract: distinct observed phrases that exactly match normalized card phrases divided by distinct normalized observed phrases. Normalization lowercases, trims, collapses whitespace, and turns punctuation into word boundaries. Extra card phrases do not affect the denominator; no observations return unavailable. This is a project-local decision, not a claim that B3 specifies those mechanics. No verified production disease-card corpus exists.
+
+Repository path review found no production disease-card lookup/presentation
+caller. The synthetic workflow uses only the explicitly marked test fixture;
+Spark-only returns a fixed referral and records that no production cards are
+available. The bounded follow-up path previously passed arbitrary caller cards
+to the composer; it now fails closed unless card status is `verified` and both
+language review statuses are `REVIEWED`. This metadata gate does not replace
+the full loader/source-validation boundary.
 
 ## Content workflow (requirements vs. recommendation)
 
@@ -34,19 +60,19 @@ B6 further requires treatment text to come only from cards; Hindi text must be p
 
 English and Hindi content must both be present. B6 specifically requires native-speaker review for Hindi; the project should also identify who reviews English clarity and preserve each review result in the ledger. No reviewer or approval is currently identified.
 
-## Decisions needed before card authoring
+## Decisions needed before further card authoring and approval
 
 1. Identify the intended farmer region and approve the final three crops from the B6 candidates; confirm the 12–16 total and per-crop allocation.
-2. Approve a source-selection standard and source set appropriate to that region, including how each claim will be traceable to a source locator.
+2. Approve a source-selection standard appropriate to that region; confirm the supplied source metadata and each claim-to-page/section mapping against the source documents.
 3. Assign the agronomic/source reviewer and native Hindi reviewer, and decide where dated review evidence will live. Do not fill `reviewed_by` until review actually occurs.
 4. Decide whether cards will contain any chemical options. If yes, confirm the project-local record shape before authoring; B6 only requires a citation and label instruction, while the validator currently requires `{text, source, label_instruction}`.
 5. Treat the S2 phrase normalization and denominator as project-local implementation choices. Before production use, decide whether language-specific synonym/translation handling is needed; current matching is exact phrase matching only and does not translate or infer equivalence.
 
 ## Safe allowlist and matching path
 
-After cards are sourced and approved, validate every card, then build the trusted T05 crop allowlist from the unique `crop` values and disease-ID allowlist from unique `id` values in that approved production-card set. Exclude `general_safety.yaml` and all synthetic/test fixtures. Fail closed on missing/duplicate IDs, unapproved crop values, or cards lacking review evidence. This derivation is a proposed repository process; no production card set currently exists.
+After cards are sourced and approved, validate every card, then build the trusted T05 crop allowlist from the unique `crop` values and disease-ID allowlist from unique `id` values in that approved production-card set. Exclude `general_safety.yaml`, draft cards, and all synthetic/test fixtures. Fail closed on missing/duplicate IDs, unapproved crop values, or cards lacking review evidence. This derivation is a proposed repository process; no approved production card set currently exists.
 
-The S2 overlap helper exists, but do not use it as production matching until the approved card set and trusted vocabulary exist. No disease facts, citations, treatment content, reviewer identities, or approvals are supplied by this plan.
+The S2 overlap helper exists, but do not use it as production matching until the approved card set and trusted vocabulary exist. Batch 1 content and citations were supplied by the owner as drafts; this integration did not independently verify agricultural facts or source support. No reviewer identities or approvals were added.
 
 ## Phase 4 T06 registry and schema work (2026-10-30)
 
@@ -60,13 +86,11 @@ source posture is a national ICAR package plus an MP advisory overlay. Cards
 remain `draft` until sources are retrieved and verified by the user. No Hindi
 reviewer is confirmed; every Hindi string remains `UNREVIEWED`.
 
-`kb/sources.yaml` now records only the eight source candidates supplied by the
-project owner. All start with `retrieved: false`, `title_verified: false`, and
-`verified_by_user: false`. The CPRI GAP title/year/publisher detail remains
-unverified against the PDF. The soybean bulletin title remains unresolved. PAU
-is supplementary/Punjab and has no edition year; the validator rejects PAU
-citation until an edition is identified. The CPRI Hindi entry is cross-check
-only and not citable. No other source details were added.
+At that dated snapshot, `kb/sources.yaml` recorded eight unverified source
+candidates. This historical description is superseded by the Batch 1 registry
+update below; it is retained to preserve history. PAU remains supplementary/
+Punjab with no edition year and cannot be cited until that is resolved. The
+CPRI Hindi entry remains cross-check only and non-citable.
 
 The validator adds a project-local schema for `status`, `region_tags`,
 `claim_sources` (`claim`, `source_id`, `page`, `section`), language review
@@ -79,18 +103,22 @@ guard, not a complete language-aware safety review. The single
 These structural gates do not establish agricultural correctness, source
 validity, translation quality, or review approval.
 
-No files exist under `docs/kb/source_excerpts/`; therefore no production card
-was drafted. Required next evidence: project-owner confirmation of the three
-crops and per-crop card allocation; actual source documents/excerpts with page
-and section locators; confirmation of the CPRI and soybean titles; PAU edition
-year if used; and qualified English/agronomic and native-Hindi review evidence.
+At the 2026-10-30 snapshot, no files existed under
+`docs/kb/source_excerpts/`; therefore no production card was drafted then. For
+the current Batch 1, owner-held PDFs were not copied into the repository and
+were not independently inspected during integration. Remaining evidence:
+confirm crop scope/allocation, obtain reviewer confirmation of the cited source
+metadata and claim/page/section mapping, resolve the soybean numbering
+discrepancy, and complete agronomy and native-Hindi review. PAU remains unused
+and requires an edition year before any citation.
 
 ## Registry request correction history (2026-10-30; superseded by owner follow-up)
 
 An intermediate owner correction temporarily defined registry fields without
 `title_verified` or `edition_year`. That snapshot is retained here to preserve
-the change history, but it is no longer the active registry contract. The
-eight candidate titles and `gap` tier update remain in effect.
+the change history, but it is no longer the active registry contract. In the
+subsequent historical snapshot, the eight candidate titles and `gap` tier
+update were in effect.
 
 The owner subsequently clarified that `gap` is a valid tier for sources not
 found. JNKVV/RVSKVV is now `tier: gap`, with the note “No package was found;
@@ -99,19 +127,21 @@ citation requirements are detailed in the current gate below. The CPRI Hindi
 entry is tagged `cross-check` and the JNKVV/RVSKVV gap entry is tagged `gap`,
 so neither can be cited.
 
-No files exist under `docs/kb/source_excerpts/`; no production cards were
-drafted. Needed next: local excerpts with document/page/section references,
-owner confirmation of target crops, and actual retrieval/user verification for
-sources. Hindi remains unreviewed.
+At that historical snapshot, no files existed under
+`docs/kb/source_excerpts/` and no production cards had been drafted. Needed
+then: local excerpts with document/page/section references, owner confirmation
+of target crops, and actual retrieval/user verification for sources. Hindi was
+unreviewed.
 
-## Current registry contract — owner correction
+## Current registry contract — owner correction (historical snapshot superseded by Batch 1)
 
-Each of the eight supplied candidate entries contains `title_verified` and
-`edition_year`. All candidates are seeded with `title_verified: false` and
-`edition_year: null`; `retrieved` and `verified_by_user` also remain false.
-The title field is not treated as verified merely because a candidate name is
-present. Registry validation requires `title_verified` to be a boolean and
-`edition_year` to be a positive integer or null.
+At that historical snapshot, each of the eight supplied candidate entries
+contained `title_verified` and `edition_year`; all had
+`title_verified: false`, `edition_year: null`, `retrieved: false`, and
+`verified_by_user: false`. The title field was not treated as verified merely
+because a candidate name was present. Registry validation requires
+`title_verified` to be a boolean and `edition_year` to be a positive integer or
+null.
 
 A production-card citation is rejected if its source is `gap` or `cross-check`,
 is not retrieved, or has `title_verified: false`. A citation to
@@ -119,5 +149,26 @@ is not retrieved, or has `title_verified: false`. A citation to
 is null. A `verified` disease card still requires reviewed languages, confirmed
 reviewer fields, and user verification of every cited source. These are local
 validation gates; they do not establish source validity or agricultural
-accuracy. No source has been retrieved or verified, so no candidate is
-currently citable and T06 remains PARTIAL.
+accuracy. No source had been retrieved or verified at that snapshot, so no
+candidate was citable and T06 remained PARTIAL.
+
+## Batch 1 registry and card integration (2026-11-03)
+
+The registry now has 10 records: six existing candidates are unchanged; the
+CPRI and soybean records were updated from the supplied patch; IIVR TB75 and
+the tomato horticulture e-course were added. Four Batch 1 records are marked
+retrieved/title-verified and now have `verified_by_user: true` after owner
+confirmation of their titles and years on 2026-11-03. The other six records
+remain `verified_by_user: false`. The soybean Bulletin 17/16 discrepancy is
+preserved in the registry notes and remains unresolved. The e-course is
+recorded as hosted on the RVSKVV website; the registry does not attribute
+authorship to RVSKVV.
+
+Ten Batch 1 cards were copied unchanged and pass `load_disease_card()`. They
+remain drafts, unreviewed in English and Hindi, with null reviewer fields and
+empty chemical options. Printed page references are listed in
+`kb/cards/README.md` from the supplied integration notes; source PDFs are not in
+the repository, so these locators and claims are not independently verified.
+The set is still short of the 12–16 B6 target, crop scope is unconfirmed, and
+the region-specific MP advisory overlay is missing. Phase 4 is **NOT FULLY
+CLOSED**.

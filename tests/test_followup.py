@@ -16,12 +16,29 @@ from conftest import REPO_ROOT
 
 # Clearly synthetic prompt fixture; wording is not agronomic guidance.
 SYNTHETIC_CARD = {
+    # Test-only gate values exercise rendering; they are not agricultural or
+    # reviewer evidence and are never loaded as production KB content.
+    "status": "verified",
+    "review_status": {"en": "REVIEWED", "hi": "REVIEWED"},
     "follow_up_questions": [
         {"id": "q1", "en": "Synthetic question one?"},
         {"id": "q2", "en": "Synthetic question two?"},
     ]
 }
 SAFETY_CARD = load_safety_card(REPO_ROOT / "kb" / "cards" / "general_safety.yaml")
+
+
+@pytest.mark.parametrize("status,review_status", [
+    ("draft", {"en": "REVIEWED", "hi": "REVIEWED"}),
+    ("verified", {"en": "REVIEWED", "hi": "UNREVIEWED"}),
+    ("verified", {"en": "UNREVIEWED", "hi": "REVIEWED"}),
+])
+def test_draft_or_unreviewed_language_card_never_reaches_reply(status, review_status):
+    card = {**SYNTHETIC_CARD, "status": status, "review_status": review_status}
+    with pytest.raises(FollowUpError, match="not approved"):
+        begin_followup(
+            FollowUpState(), card=card, safety_card=SAFETY_CARD, question_id="q1"
+        )
 
 
 def test_two_kb_questions_then_referral_end_to_end():

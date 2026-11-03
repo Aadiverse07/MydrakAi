@@ -1,0 +1,150 @@
+# DRAFT disease card (batch 1). status: draft. English and Hindi are UNREVIEWED.
+# Not production-approved farmer guidance. Hindi is a draft translation pending native-speaker review.
+# chemical_options is intentionally empty. confusable_with is intentionally empty pending agronomist input.
+id: tomato_leaf_curl
+crop: tomato
+names:
+  en: Tomato leaf curl disease
+  hi: टमाटर का पत्ता मरोड़ (लीफ कर्ल) रोग
+symptoms:
+- Severe stunting with downward rolling and crinkling of leaves
+- Newly emerging leaves slightly yellow, then also curl
+- Older leaves become leathery and brittle
+- Pale plants with many lateral branches and a bushy look
+- Leaf puckering, mottle and distortion can also occur
+confusable_with: []
+follow_up_questions:
+- id: new_leaves
+  en: Are the new leaves slightly yellow and curling or rolling downward?
+  hi: क्या नई पत्तियाँ हल्की पीली होकर मुड़ रही हैं या नीचे की ओर लिपट रही हैं?
+- id: bushy
+  en: Is the plant stunted and bushy, with many side branches?
+  hi: क्या पौधा बौना और झाड़ीनुमा है, जिसमें बहुत सारी बग़ल की शाखाएँ निकली हैं?
+- id: whitefly
+  en: Have you seen whiteflies on the plants?
+  hi: क्या पौधों पर सफ़ेद मक्खियाँ दिख रही हैं?
+low_risk_steps:
+  en:
+  - Use yellow sticky traps to monitor whiteflies.
+  - Grow cereal barrier crops around the field.
+  - Remove weed hosts.
+  - Raise seedlings in a protected net house or greenhouse nursery.
+  - Rogue out infected plants soon after transplanting so the virus does not build up.
+  hi:
+  - सफ़ेद मक्खी पर नज़र रखने के लिए पीले चिपचिपे जाल लगाएँ।
+  - खेत के चारों ओर अनाज वाली फसलों की बाड़ (बैरियर) लगाएँ।
+  - रोग को आश्रय देने वाले खरपतवार हटाएँ।
+  - पौध नेट हाउस या ग्रीनहाउस वाली सुरक्षित नर्सरी में तैयार करें।
+  - रोपाई के तुरंत बाद संक्रमित पौधों को उखाड़ दें, ताकि वायरस न बढ़े।
+chemical_options: []
+when_to_refer: 'Symptoms alone do not show which virus is involved: the source lists several different viruses that cause tomato leaf curl. Ask the local KVK or agriculture officer about confirmation. This card does not name a virus species.'
+sources:
+- icar_tomato_hort_ecourse
+- icar_iivr_viruses_tb75
+reviewed_by: null
+status: draft
+region_tags:
+- national
+claim_sources:
+- claim: names.en
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Symptom'
+- claim: names.hi
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Symptom'
+- claim: symptoms[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Symptom'
+- claim: symptoms[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Symptom'
+- claim: symptoms[2]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Symptom'
+- claim: symptoms[3]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Symptom'
+- claim: symptoms[4]
+  source_id: icar_iivr_viruses_tb75
+  page: '2'
+  section: '1.1.1.1 Leaf curl diseases: Tomato'
+- claim: follow_up_questions[0].en
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Symptom'
+- claim: follow_up_questions[0].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Symptom'
+- claim: follow_up_questions[1].en
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Symptom'
+- claim: follow_up_questions[1].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Symptom'
+- claim: follow_up_questions[2].en
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Mode of spread and Management'
+- claim: follow_up_questions[2].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Mode of spread and Management'
+- claim: low_risk_steps.en[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Mode of spread and Management'
+- claim: low_risk_steps.en[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Mode of spread and Management'
+- claim: low_risk_steps.en[2]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Mode of spread and Management'
+- claim: low_risk_steps.en[3]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Mode of spread and Management'
+- claim: low_risk_steps.en[4]
+  source_id: icar_iivr_viruses_tb75
+  page: '43'
+  section: 3.2 Cultural
+- claim: low_risk_steps.hi[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Mode of spread and Management'
+- claim: low_risk_steps.hi[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Mode of spread and Management'
+- claim: low_risk_steps.hi[2]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Mode of spread and Management'
+- claim: low_risk_steps.hi[3]
+  source_id: icar_tomato_hort_ecourse
+  page: '116'
+  section: 'Lecture 14 - Diseases of Tomato: Leaf curl, Mode of spread and Management'
+- claim: low_risk_steps.hi[4]
+  source_id: icar_iivr_viruses_tb75
+  page: '43'
+  section: 3.2 Cultural
+- claim: when_to_refer
+  source_id: icar_iivr_viruses_tb75
+  page: '2'
+  section: '1.1.1.1 Leaf curl diseases: Tomato'
+review_status:
+  en: UNREVIEWED
+  hi: UNREVIEWED
+language_reviewers:
+  en: null
+  hi: null

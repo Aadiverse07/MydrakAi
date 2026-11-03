@@ -263,7 +263,7 @@ def test_supplementary_source_requires_its_region_in_card():
 
 def test_registry_integrity_unique_ids_enums_and_exact_fields():
     entries = project_registry()
-    assert len(validate_source_registry(entries)) == 8
+    assert len(validate_source_registry(entries)) == 10
     duplicate = entries + [copy.deepcopy(entries[0])]
     with pytest.raises(ValueError, match="duplicate source id"):
         validate_source_registry(duplicate)
@@ -297,17 +297,45 @@ def test_gap_is_a_valid_registry_tier():
     assert validate_source_registry(entries)["jnkvv_rvskvv_package"]["tier"] == "gap"
 
 
-def test_seeded_registry_keeps_all_candidate_sources_unverified():
+def test_batch1_registry_metadata_and_remaining_candidates():
     entries = load_source_registry()
-    assert len(entries) == 8
+    assert len(entries) == 10
+    batch1_sources = {
+        "icar_cpri_gap_bulletin_108": (
+            "Good Agricultural Practices (GAP) for Production of Potato Crop "
+            "(Technical Bulletin No. 108)", 2020,
+        ),
+        "icar_iisr_soybean_bulletin_17": (
+            "Improved Practices & Methods for Soybean Production and Technical "
+            "Recommendations (Extension Bulletin 17, Revised Edition 2022)", 2022,
+        ),
+        "icar_iivr_viruses_tb75": (
+            "Viruses of Vegetable Crops: Symptomatology, Diagnostics and Management "
+            "(Technical Bulletin No. 75)", 2017,
+        ),
+        "icar_tomato_hort_ecourse": (
+            "Disease of Horticultural Crops & their Management "
+            "(ICAR e-Course for B.Sc (Agriculture) and B.Tech (Agriculture))", 2020,
+        ),
+    }
+    for source_id, (title, edition_year) in batch1_sources.items():
+        entry = entries[source_id]
+        assert entry["title"] == title
+        assert entry["edition_year"] == edition_year
+        assert entry["retrieved"] is True
+        assert entry["title_verified"] is True
+        assert entry["verified_by_user"] is True
+    unchanged_ids = set(entries) - set(batch1_sources)
+    assert len(unchanged_ids) == 6
     assert all(
-        not item["retrieved"] and not item["title_verified"]
-        and not item["verified_by_user"] and item["edition_year"] is None
-        for item in entries.values()
+        not entries[source_id]["retrieved"]
+        and not entries[source_id]["title_verified"]
+        and not entries[source_id]["verified_by_user"]
+        and entries[source_id]["edition_year"] is None
+        for source_id in unchanged_ids
     )
     expected_titles = {
-        "icar_cpri_gap_bulletin_108": "ICAR-CPRI GAP Bulletin 108",
-        "icar_iisr_soybean_bulletin_17": "ICAR-IISR Soybean Extension Bulletin 17",
+        **{source_id: title for source_id, (title, _) in batch1_sources.items()},
         "pau_package_of_practices": "PAU Package of Practices",
         "tnau_agritech_soybean": "TNAU Agritech Soybean",
         "icar_crida_mp_advisories": "ICAR-CRIDA MP agro-advisories",

@@ -1,0 +1,83 @@
+# DRAFT disease card (batch 1). status: draft. English and Hindi are UNREVIEWED.
+# Not production-approved farmer guidance. Hindi is a draft translation pending native-speaker review.
+# chemical_options is intentionally empty. confusable_with is intentionally empty pending agronomist input.
+id: tomato_septoria_leaf_spot
+crop: tomato
+names:
+  en: Septoria leaf spot (tomato)
+  hi: टमाटर की सेप्टोरिया पत्ती धब्बा बीमारी
+symptoms:
+- Numerous small, grey, circular leaf spots with a dark border
+- The plant may be attacked at any stage of growth
+confusable_with: []
+follow_up_questions:
+- id: spot_look
+  en: Are the spots small, grey and round with a darker border?
+  hi: क्या धब्बे छोटे, गोल और धूसर (स्लेटी) हैं जिनका किनारा गहरा है?
+- id: many_spots
+  en: Are there very many spots on the leaves?
+  hi: क्या पत्तियों पर बहुत ज़्यादा संख्या में धब्बे हैं?
+low_risk_steps:
+  en:
+  - Remove and destroy the affected plant parts.
+  hi:
+  - प्रभावित पौधे के हिस्सों को हटाकर नष्ट करें।
+chemical_options: []
+when_to_refer: The source describes a fungicide spray for this disease, but this draft card gives no spray advice. Ask the local KVK or agriculture officer to confirm the disease and advise on any spray.
+sources:
+- icar_tomato_hort_ecourse
+reviewed_by: null
+status: draft
+region_tags:
+- national
+claim_sources:
+- claim: names.en
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Septoria Leaf Spot, Symptom'
+- claim: names.hi
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Septoria Leaf Spot, Symptom'
+- claim: symptoms[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Septoria Leaf Spot, Symptom'
+- claim: symptoms[1]
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Septoria Leaf Spot, Symptom'
+- claim: follow_up_questions[0].en
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Septoria Leaf Spot, Symptom'
+- claim: follow_up_questions[0].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Septoria Leaf Spot, Symptom'
+- claim: follow_up_questions[1].en
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Septoria Leaf Spot, Symptom'
+- claim: follow_up_questions[1].hi
+  source_id: icar_tomato_hort_ecourse
+  page: '112'
+  section: 'Lecture 14 - Diseases of Tomato: Septoria Leaf Spot, Symptom'
+- claim: low_risk_steps.en[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Septoria Leaf Spot, Management'
+- claim: low_risk_steps.hi[0]
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Septoria Leaf Spot, Management'
+- claim: when_to_refer
+  source_id: icar_tomato_hort_ecourse
+  page: '113'
+  section: 'Lecture 14 - Diseases of Tomato: Septoria Leaf Spot, Management'
+review_status:
+  en: UNREVIEWED
+  hi: UNREVIEWED
+language_reviewers:
+  en: null
+  hi: null

@@ -66,6 +66,15 @@ def begin_followup(
     the immutable input state.
     """
     _validate_state(state)
+    review_status = card.get("review_status") if isinstance(card, Mapping) else None
+    if (
+        not isinstance(card, Mapping)
+        or card.get("status") != "verified"
+        or not isinstance(review_status, Mapping)
+        or review_status.get("en") != "REVIEWED"
+        or review_status.get("hi") != "REVIEWED"
+    ):
+        raise FollowUpError("KB card is not approved for farmer-facing replies")
     if state.referred:
         raise FollowUpError("follow-up is already complete")
     if state.awaiting_answer:

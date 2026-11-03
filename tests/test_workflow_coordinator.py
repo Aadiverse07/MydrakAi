@@ -39,6 +39,9 @@ PUBLIC_TEST_EVIDENCE = ProcessingEvidence(
     public_test_provenance_verified=True,
 )
 SYNTHETIC_CARD = {
+    # Test-only rendering gate values; no production reviewer approval implied.
+    "status": "verified",
+    "review_status": {"en": "REVIEWED", "hi": "REVIEWED"},
     "follow_up_questions": [
         {"id": "q1", "en": "Synthetic question one?"},
         {"id": "q2", "en": "Synthetic question two?"},
