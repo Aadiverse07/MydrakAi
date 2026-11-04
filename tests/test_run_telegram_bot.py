@@ -88,3 +88,67 @@ def test_spend_ledger_read_gate_is_fail_closed_and_read_only(tmp_path):
         db.execute("CREATE TABLE spend_ledger(singleton INTEGER PRIMARY KEY, reserved_usd TEXT NOT NULL)")
         db.execute("INSERT INTO spend_ledger VALUES(1,'1')")
     assert not run_telegram_bot._ledger_has_headroom(path, Decimal("1"))
+
+
+def test_real_spark_factory_uses_runner_config_with_private_upload_flag(monkeypatch, tmp_path):
+    """Regression: the factory must build SparkClient from the runner's config copy
+    (which carries allow_private_upload), not the raw models.yaml dict."""
+    from io import BytesIO
+    from PIL import Image
+    from mydrak.live.clients import SparkClient
+    from mydrak.privacy.data_policy import (
+        DataClass, DataPolicy, ProcessingEvidence, ProviderMode,
+    )
+
+    captured = {}
+
+    class FakeRunner:
+        def __init__(self, **kwargs):
+            captured["factory"] = kwargs["spark_provider_factory"]
+            captured["raw_config"] = kwargs["spark_config"]
+            self.spark_config = dict(kwargs["spark_config"])
+            self.spark_config["allow_private_upload"] = kwargs["allow_private_upload"]
+            captured["runner_config"] = self.spark_config
+
+        def run_forever(self):
+            return 0
+
+    class Closable:
+        def __init__(self, *a, **k):
+            pass
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(run_telegram_bot, "TelegramBotRunner", FakeRunner)
+    monkeypatch.setattr(run_telegram_bot, "TraceStore", Closable)
+    monkeypatch.setattr(run_telegram_bot, "PublicLimitStore", Closable)
+    monkeypatch.setattr(run_telegram_bot.TelegramClient, "from_environment",
+                        classmethod(lambda cls, environ=None: object()))
+    ledger = tmp_path / "ledger.sqlite3"
+    ledger.touch()
+    environ = {
+        "MYDRAK_LIVE": "1", "TELEGRAM_BOT_TOKEN": "fake-token",
+        "TELEGRAM_ALLOWED_CHAT_IDS": "1", "META_API_KEY": "fake-key",
+    }
+    assert run_telegram_bot.run(
+        ["--live-authorized", "--max-spend-usd", "5", "--ledger", str(ledger)],
+        environ=environ, output=lambda _: None,
+    ) == 0
+    assert "allow_private_upload" not in captured["raw_config"]
+    assert captured["runner_config"]["allow_private_upload"] is True
+
+    buffer = BytesIO()
+    Image.new("RGB", (8, 8)).save(buffer, "JPEG")
+    evidence = ProcessingEvidence(
+        provider_mode=ProviderMode.STANDARD, provider_mode_verified=True,
+        rights_confirmed=True, user_authorization_confirmed=True,
+        privacy_notice_present=True,
+    )
+    client = captured["factory"](
+        config=captured["runner_config"], image_bytes=buffer.getvalue(),
+        image_provenance="private", data_policy=DataPolicy.PRIVATE,
+        data_class=DataClass.PRIVATE, evidence=evidence, use_contributor=False,
+        trace_callback=lambda step: None,
+    )
+    assert type(client) is SparkClient

@@ -82,7 +82,7 @@ def run(argv: list[str] | None = None, *, environ: dict[str, str] | None = None,
 
     def spark_factory(**values: Any) -> SparkClient:
         return SparkClient(
-            spark, context=None, data_policy=values["data_policy"],
+            values["config"], context=None, data_policy=values["data_policy"],
             data_class=values["data_class"], evidence=values["evidence"],
             image_bytes=values["image_bytes"],
             image_provenance=values["image_provenance"], use_contributor=False,
