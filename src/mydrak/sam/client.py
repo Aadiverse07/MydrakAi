@@ -389,6 +389,7 @@ def serialize_sam_body(
         "model": model,
         "input": [
             {
+                "type": "message",
                 "role": "user",
                 "content": [
                     {"type": "input_text", "text": prompt},

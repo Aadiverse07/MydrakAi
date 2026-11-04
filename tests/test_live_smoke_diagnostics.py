@@ -9,6 +9,7 @@ import pytest
 import scripts._live_smoke as smoke
 from mydrak.live.guard import LiveConfigError
 import mydrak.live.http as live_http
+from mydrak.live.diagnostics import safe_condition_id
 
 VALID_ENVELOPE = json.dumps({
     "choices": [{"message": {"content": "not a diagnosis JSON"}}],
@@ -40,9 +41,10 @@ class MockTransport:
         return self.result
 
 
-def invoke(monkeypatch, tmp_path, transport, *, provider="tier2", argv=None, env=None):
+def invoke(monkeypatch, tmp_path, transport, *, provider="tier2", argv=None, env=None,
+           config=None):
     monkeypatch.setattr(smoke, "_ROOT", tmp_path)
-    monkeypatch.setattr(smoke, "load_live_provider_config", lambda _path, _provider: TIER_CONFIG)
+    monkeypatch.setattr(smoke, "load_live_provider_config", lambda _path, _provider: config or TIER_CONFIG)
     lines = []
     result = smoke.run_smoke(
         provider, argv or [], transport=transport,
@@ -58,6 +60,13 @@ def invoke(monkeypatch, tmp_path, transport, *, provider="tier2", argv=None, env
 
 def line_category_count(line):
     return line.count("failure_category=")
+
+
+def test_condition_ids_are_allowlisted_and_unknown_values_are_suppressed():
+    assert safe_condition_id("spend_cap") == "spend_cap"
+    assert safe_condition_id("missing_max_tokens") == "missing_max_tokens"
+    assert safe_condition_id("synthetic-secret-value") == "unknown"
+    assert safe_condition_id("/private/path") == "unknown"
 
 
 @pytest.mark.parametrize(("argv", "env", "condition"), [
@@ -105,6 +114,69 @@ def test_missing_key_is_separate_from_other_guard_refusals(monkeypatch, tmp_path
     assert result == 2 and transport.calls == 0
     assert "failure_category=missing_key" in line
     assert "request_sent=false" in line
+
+
+def test_missing_selected_nvidia_key_fails_before_dispatch_without_output_leak(monkeypatch, tmp_path):
+    config = TIER_CONFIG | {
+        "host": "nvidia", "credential_env_var": "NVIDIA_API_KEY",
+        "model_id": "meta/muse-glimmer-30b",
+        "endpoint": "https://integrate.api.nvidia.com/v1",
+    }
+    transport = MockTransport((200, VALID_ENVELOPE))
+    result, line = invoke(
+        monkeypatch, tmp_path, transport, provider="tier1", config=config,
+        argv=["--live-authorized", "--max-spend-usd", "0.25"],
+        env={"MYDRAK_LIVE": "1"},
+    )
+    assert result == 2 and transport.calls == 0
+    assert "failure_category=missing_key" in line and "request_sent=false" in line
+
+
+@pytest.mark.parametrize("content", ["", None])
+def test_empty_or_null_final_content_is_schema_failure_and_reasoning_is_never_printed(
+    monkeypatch, tmp_path, content,
+):
+    reasoning = "SYNTHETIC_PRIVATE_REASONING"
+    envelope = json.dumps({
+        "choices": [{"message": {"content": content, "reasoning": reasoning}}],
+        "usage": {"prompt_tokens": 3, "completion_tokens": 2},
+    }).encode()
+    config = TIER_CONFIG | {
+        "host": "nvidia", "credential_env_var": "NVIDIA_API_KEY",
+        "model_id": "meta/muse-glimmer-30b",
+        "endpoint": "https://integrate.api.nvidia.com/v1",
+    }
+    transport = MockTransport((200, envelope))
+    result, line = invoke(
+        monkeypatch, tmp_path, transport, provider="tier1", config=config,
+        argv=["--live-authorized", "--max-spend-usd", "0.25"],
+        env={"MYDRAK_LIVE": "1", "NVIDIA_API_KEY": "SYNTHETIC-NVIDIA-KEY"},
+    )
+    assert result == 1 and transport.calls == 1
+    assert "failure_category=schema_invalid" in line and "request_sent=true" in line
+    assert reasoning not in line and "SYNTHETIC-NVIDIA-KEY" not in line
+
+
+def test_reasoning_field_does_not_escape_successful_smoke_output(monkeypatch, tmp_path):
+    reasoning = "SYNTHETIC_REASONING_PRIVATE"
+    envelope = json.dumps({
+        "choices": [{"message": {
+            "content": VALID_DIAGNOSIS.decode(), "reasoning": reasoning,
+        }}],
+        "usage": {"prompt_tokens": 3, "completion_tokens": 2},
+    }).encode()
+    config = TIER_CONFIG | {
+        "host": "nvidia", "credential_env_var": "NVIDIA_API_KEY",
+        "model_id": "meta/muse-glimmer-30b",
+        "endpoint": "https://integrate.api.nvidia.com/v1",
+    }
+    result, line = invoke(
+        monkeypatch, tmp_path, MockTransport((200, envelope)), provider="tier1",
+        config=config, argv=["--live-authorized", "--max-spend-usd", "0.25"],
+        env={"MYDRAK_LIVE": "1", "NVIDIA_API_KEY": "SYNTHETIC-NVIDIA-KEY"},
+    )
+    assert result == 0 and "status=response_received" in line
+    assert reasoning not in line and "SYNTHETIC-NVIDIA-KEY" not in line
 
 
 @pytest.mark.parametrize(("error", "category"), [

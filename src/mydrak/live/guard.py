@@ -40,14 +40,13 @@ class SpendReservation:
 
 DEFAULT_SPEND_LEDGER = Path(".mydrak-spend-ledger.sqlite3")
 _PROVIDER_FIELDS = {
-    "tier1": ("model_id", "endpoint", "timeout_s", "max_tokens",
-              "max_input_tokens_estimate",
-              "price_input_per_1m", "price_output_per_1m"),
+    "tier1": ("timeout_s", "max_tokens", "max_input_tokens_estimate"),
     "tier2": ("model_id", "model_id_contributor", "endpoint", "timeout_s",
               "max_tokens", "max_input_tokens_estimate",
               "price_input_per_1m", "price_output_per_1m"),
     "voice": ("model_id", "endpoint", "timeout_s", "price_per_1k_minutes"),
-    "sam": ("model_id", "endpoint", "timeout_s", "price_per_1k_images"),
+    "sam": ("model_id", "endpoint", "timeout_s", "price_per_1k_images",
+            "max_input_tokens_estimate"),
 }
 
 
@@ -70,9 +69,14 @@ def load_live_provider_config(path: str | Path, provider: str) -> dict[str, Any]
     if not isinstance(section, Mapping):
         raise LiveConfigError("provider configuration section is missing", condition="config_section")
     result = dict(section)
+    if provider == "tier1":
+        result = _resolve_glimmer_profile(document, result)
     if _contains_todo(result):
         raise LiveConfigError("provider configuration contains an unresolved TODO(verify)", condition="config_unresolved")
-    for field in _PROVIDER_FIELDS[provider]:
+    fields = _PROVIDER_FIELDS[provider]
+    if provider == "tier1":
+        fields += ("model_id", "endpoint", "price_input_per_1m", "price_output_per_1m")
+    for field in fields:
         if field not in result:
             raise LiveConfigError(f"provider configuration field {field} is missing", condition=f"missing_{field}")
         value = result[field]
@@ -89,10 +93,12 @@ def load_live_provider_config(path: str | Path, provider: str) -> dict[str, Any]
         elif field.startswith("price_"):
             _nonnegative_decimal(value, field, error_type=LiveConfigError)
     if provider == "tier1":
-        host = document.get("glimmer_host")
-        if not isinstance(host, Mapping):
-            raise LiveConfigError("Glimmer host configuration is missing", condition="glimmer_host")
-        _clean_config_text(host.get("choice"), "Glimmer host", error_type=LiveConfigError)
+        credential_name = _clean_config_text(
+            result.get("credential_env_var"), "credential environment variable",
+            error_type=LiveConfigError,
+        )
+        if not credential_name.isidentifier() or credential_name != credential_name.upper():
+            raise LiveConfigError("credential environment variable is invalid", condition="credential_env_var")
     if provider == "tier2" and "diagnosis_max_tokens" in result:
         diagnosis_cap = _positive_int(
             result["diagnosis_max_tokens"], "diagnosis_max_tokens",
@@ -102,6 +108,43 @@ def load_live_provider_config(path: str | Path, provider: str) -> dict[str, Any]
             raise LiveConfigError(
                 "diagnosis_max_tokens exceeds max_tokens", condition="diagnosis_max_tokens"
             )
+    return result
+
+
+def _resolve_glimmer_profile(document: Mapping[str, Any], base: dict[str, Any]) -> dict[str, Any]:
+    host = document.get("glimmer_host")
+    if not isinstance(host, Mapping):
+        raise LiveConfigError("Glimmer host configuration is missing", condition="glimmer_host")
+    choice = _clean_config_text(host.get("choice"), "Glimmer host", error_type=LiveConfigError)
+    profiles = host.get("profiles")
+    if profiles is None:
+        # Accept the pre-profile Together test/config shape for compatibility.
+        if choice != "together":
+            raise LiveConfigError("selected Glimmer host profile is missing", condition="glimmer_profile")
+        result = dict(base)
+        result.setdefault("credential_env_var", "TOGETHER_API_KEY")
+        result["host"] = choice
+        return result
+    if choice not in {"nvidia", "together"} or not isinstance(profiles, Mapping):
+        raise LiveConfigError("selected Glimmer host is unsupported", condition="glimmer_profile")
+    profile = profiles.get(choice)
+    if not isinstance(profile, Mapping):
+        raise LiveConfigError("selected Glimmer host profile is missing", condition="glimmer_profile")
+    expected = {
+        "endpoint", "model_id", "credential_env_var",
+        "price_input_per_1m", "price_output_per_1m",
+    }
+    if set(profile) != expected:
+        raise LiveConfigError("selected Glimmer host profile has missing or unknown fields", condition="glimmer_profile")
+    result = dict(base)
+    result.update(profile)
+    result["host"] = choice
+    credential_name = _clean_config_text(
+        result.get("credential_env_var"), "credential environment variable",
+        error_type=LiveConfigError,
+    )
+    if not credential_name.isidentifier() or credential_name != credential_name.upper():
+        raise LiveConfigError("credential environment variable is invalid", condition="credential_env_var")
     return result
 
 
@@ -179,6 +222,60 @@ def reserve_live_call(
     if estimate > cap:
         raise LiveGuardError("worst-case reservation exceeds spend cap", condition="spend_cap")
 
+    return _reserve_estimated_amount(
+        model_id=model_id, estimate=estimate, cap=cap, ledger_path=ledger_path,
+    )
+
+
+def reserve_live_estimated_cost(
+    config: Mapping[str, Any],
+    *,
+    estimated_usd: Any,
+    cli_authorized: bool,
+    environ: Mapping[str, str],
+    max_spend_usd: Any,
+    ledger_path: str | Path = DEFAULT_SPEND_LEDGER,
+    credential_env_var: str = "META_API_KEY",
+) -> SpendReservation:
+    """Apply the shared live gates and reserve a known non-token estimate.
+
+    Use only where a provider bills by a validated local unit (for example,
+    images or rounded-up audio seconds). The caller must derive the estimate
+    from validated configuration and input measurements before calling this
+    helper. The same CLI/env/key/cap/ledger checks as token-priced calls apply.
+    """
+    if cli_authorized is not True:
+        raise LiveGuardError("explicit --live-authorized flag is required", condition="cli_authorization")
+    if environ.get("MYDRAK_LIVE") != "1":
+        raise LiveGuardError("MYDRAK_LIVE=1 is required", condition="MYDRAK_LIVE")
+    if not isinstance(environ.get(credential_env_var), str) or not environ[credential_env_var]:
+        raise LiveGuardError("required credential environment variable is missing", condition="credential_missing")
+    cap = _positive_decimal(max_spend_usd, "--max-spend-usd", condition="max_spend_usd")
+    if not isinstance(config, Mapping):
+        raise LiveGuardError("provider configuration is unavailable", condition="provider_config")
+    model_id = _clean_config_text(config.get("model_id"), "model ID", condition="model_id")
+    endpoint = _clean_config_text(config.get("endpoint"), "endpoint", condition="endpoint")
+    try:
+        parsed_endpoint = urlsplit(endpoint)
+        if (parsed_endpoint.scheme != "https" or not parsed_endpoint.hostname
+                or parsed_endpoint.username is not None or parsed_endpoint.password is not None
+                or parsed_endpoint.fragment):
+            raise ValueError
+        parsed_endpoint.port
+    except ValueError:
+        raise LiveGuardError("provider endpoint is malformed", condition="endpoint") from None
+    _positive_decimal(config.get("timeout_s"), "timeout", condition="timeout_s")
+    estimate = _positive_decimal(estimated_usd, "estimated cost", condition="cost_unknown")
+    if estimate > cap:
+        raise LiveGuardError("worst-case reservation exceeds spend cap", condition="spend_cap")
+    return _reserve_estimated_amount(
+        model_id=model_id, estimate=estimate, cap=cap, ledger_path=ledger_path,
+    )
+
+
+def _reserve_estimated_amount(
+    *, model_id: str, estimate: Decimal, cap: Decimal, ledger_path: str | Path,
+) -> SpendReservation:
     path = Path(ledger_path)
     if str(path) == ":memory:" or path.name in {"", ".", ".."}:
         raise LiveGuardError("a persistent local spend-ledger file is required", condition="spend_ledger")

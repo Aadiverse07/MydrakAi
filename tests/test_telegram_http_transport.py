@@ -21,6 +21,7 @@ from mydrak.telegram.client import (
     TelegramTimeoutError,
 )
 from mydrak.telegram.config import AccessMode
+from mydrak.telegram.limits import PublicLimitStore
 from mydrak.telegram.runner import TelegramBotRunner
 from mydrak.trace.store import TraceStore
 
@@ -316,7 +317,9 @@ def test_loopback_photo_to_reply_uses_registered_replay_without_provider(monkeyp
     state = ServerState()
     state.get_updates = [[
         _raw_update(7, text="/start"),
-        _raw_update(8, text=None, photos=[{
+        _raw_update(8, text="/privacy"),
+        _raw_update(9, text="/agree"),
+        _raw_update(10, text=None, photos=[{
             "file_id": "synthetic-photo-id", "file_unique_id": "u1",
             "width": 320, "height": 240, "file_size": len(SYNTHETIC_IMAGE),
         }]),
@@ -343,7 +346,11 @@ def test_loopback_photo_to_reply_uses_registered_replay_without_provider(monkeyp
             adapter=OfflineTelegramAdapter(
                 data_policy_value="private", data_class=DataClass.PRIVATE, evidence=evidence,
             ), mode=AccessMode.ALLOWLIST, allowed_chat_ids=frozenset({"101"}),
-            stop_path=state.stop_path, spark_config={"allow_private_upload": True},
+            stop_path=state.stop_path,
+            spark_config={"model_id": "muse-spark-1.3",
+                          "model_id_contributor": "muse-spark-1.3-contributor"},
+            consent_notice_approved=True, allow_private_upload=True,
+            limit_store=PublicLimitStore(tmp_path / "consent.sqlite3"),
             processing_evidence=evidence, workflow=replay_workflow,
             spark_provider_factory=lambda **_kwargs: pytest.fail("replay must not call a provider"),
             sleep=lambda _delay: None,
@@ -352,6 +359,6 @@ def test_loopback_photo_to_reply_uses_registered_replay_without_provider(monkeyp
     assert calls == [("spark_only", SYNTHETIC_IMAGE)]
     sent_text = [request[2].get("text") for request in state.requests
                  if request[0].endswith("/sendMessage")]
-    assert len(sent_text) == 2 and "synthetic demo only" in sent_text[1]
+    assert len(sent_text) == 4 and "synthetic demo only" in sent_text[-1]
     assert all(request[0].startswith(("/bot", "/file/bot")) for request in state.requests), "request used an unexpected local route"
     trace.close()

@@ -158,8 +158,15 @@ class OfflineTelegramAdapter:
         self._states[conversation_key] = next_state
         return next_state
 
-    def handle_update(self, update: OfflineUpdate | Mapping[str, object] | None) -> BotOutcome:
+    def handle_update(
+        self, update: OfflineUpdate | Mapping[str, object] | None, *,
+        processing_evidence: ProcessingEvidence | None = None,
+    ) -> BotOutcome:
         """Validate and handle one normalized event; errors never echo input."""
+        if processing_evidence is not None and not isinstance(processing_evidence, ProcessingEvidence):
+            return self._deliver(None, BotOutcome(
+                "invalid_update", None, None, "invalid_processing_evidence",
+            ))
         parsed, error = self._coerce_update(update)
         if error is not None:
             return self._deliver(None, error)
@@ -169,7 +176,7 @@ class OfflineTelegramAdapter:
         if parsed.kind == "command":
             outcome, next_state = self._command(parsed, state)
         elif parsed.kind == "photo":
-            outcome, next_state = self._photo(state)
+            outcome, next_state = self._photo(state, processing_evidence)
         elif parsed.kind == "voice":
             if state.status is ConversationStatus.AWAITING_PHOTO:
                 try:
@@ -321,14 +328,18 @@ class OfflineTelegramAdapter:
             ), state
         return BotOutcome("command_error", state.status, "That command is not available.", "unknown_or_malformed_command"), state
 
-    def _photo(self, state: ConversationState) -> tuple[BotOutcome, ConversationState]:
+    def _photo(
+        self, state: ConversationState,
+        processing_evidence: ProcessingEvidence | None = None,
+    ) -> tuple[BotOutcome, ConversationState]:
         if state.status not in {ConversationStatus.AWAITING_PHOTO, ConversationStatus.RETAKE}:
             return self._invalid_transition(state), state
         try:
             policy = parse_data_policy(self._data_policy_value)
-            if self._evidence is None:
+            evidence = processing_evidence if processing_evidence is not None else self._evidence
+            if evidence is None:
                 raise DataPolicyError("processing evidence is unavailable")
-            require_external_processing_allowed(policy, self._data_class, self._evidence)
+            require_external_processing_allowed(policy, self._data_class, evidence)
         except DataPolicyError:
             next_state = ConversationState(ConversationStatus.REFERRED, state.language)
             return BotOutcome(

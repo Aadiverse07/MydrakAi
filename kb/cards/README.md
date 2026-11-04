@@ -31,6 +31,14 @@ owner-held PDFs.
 | `soybean_yellow_mosaic` | `icar_iisr_soybean_bulletin_17` | 39 |
 | `soybean_rust` | `icar_iisr_soybean_bulletin_17` | 40, 41 (Table 9, referral only) |
 
+## KB Batch 1 status (2026-11-03)
+
+- **Method/provenance:** the supplied ten drafts cite printed pages across four ICAR source PDFs. Codex did not inspect the owner-held PDFs; printed-page citations and claim support remain unverified independently.
+- **Automated cross-checks run:** each of the ten cards loaded through `load_disease_card()`; the focused schema/loader/batch test command passed **136 tests**; the full suite passed **1271 tests** at integration. The full suite after the reply-composer gate passed **1274 tests**, and after adding draft preview passed **1283 tests**. These checks validate structure and software behavior, not agricultural accuracy.
+- **Review:** not reviewed by an agronomist or native Hindi speaker. Cards remain `status: draft`; English and Hindi remain `UNREVIEWED`.
+- **Demo draft preview:** an explicit local-only preview is available and defaults off in `config/reply.yaml` (`demo_draft_preview: false`). To enable it for a private demo, set that value to `true` and render an unchanged card loaded from `kb/cards/`, passing its file path to `compose_reply()` or `begin_followup()`. Draft `answer` and `ask` replies are English-only and start with `DEMO DRAFT: not reviewed by an agronomist. Do not use for real farming decisions.` The synthetic fixture is refused. Public mode refuses to start while preview is enabled. Verified cards with both languages reviewed behave normally without a banner. This mode does not alter card or registry data and does not approve the content.
+- **Closure/review:** Phase 4 is **NOT FULLY CLOSED**. Agronomy review and native-speaker Hindi review remain pending; cards remain drafts and Hindi remains `UNREVIEWED`.
+
 ## Owner-confirmed Batch 1 source titles and years
 
 | Source ID | Confirmed title | Edition year |

@@ -1,4 +1,4 @@
-"""Guarded Together Glimmer and Meta Spark diagnosis clients.
+"""Guarded configured-host Glimmer and Meta Spark diagnosis clients.
 
 Request fields follow the user-supplied references in ``docs/providers``.
 The references are not independent provider verification. This module has no
@@ -239,7 +239,7 @@ class _BaseClient(DiagnosisProvider):
 
 
 class GlimmerClient(_BaseClient):
-    """Together-hosted image diagnosis; accepts public-test JPEG only."""
+    """Selected-host image diagnosis; accepts public-test JPEG only."""
 
     def __init__(self, config: Mapping[str, Any], *, image_bytes: bytes,
                  data_policy: DataPolicy, data_class: DataClass,
@@ -258,9 +258,13 @@ class GlimmerClient(_BaseClient):
         if not isinstance(image_bytes, bytes) or not image_bytes.startswith(b"\xff\xd8\xff"):
             raise ValueError("Glimmer input must be JPEG bytes")
         self._image_data = base64.b64encode(image_bytes).decode("ascii")
+        credential_env_var = config.get("credential_env_var", "TOGETHER_API_KEY")
+        if (not isinstance(credential_env_var, str) or not credential_env_var.isidentifier()
+                or credential_env_var != credential_env_var.upper()):
+            raise ValueError("Glimmer credential environment setting is invalid")
         super().__init__(
             config, cli_authorized=cli_authorized, max_spend_usd=max_spend_usd,
-            ledger_path=ledger_path, credential_env_var="TOGETHER_API_KEY",
+            ledger_path=ledger_path, credential_env_var=credential_env_var,
             environ=environ, transport=transport if transport is not None else UrllibJsonTransport(),
             trace_callback=trace_callback, retry_delays_s=retry_delays_s, sleep=sleep,
             supported_crops=supported_crops, disease_ids=disease_ids,
@@ -269,7 +273,7 @@ class GlimmerClient(_BaseClient):
 
     @property
     def _step_name(self) -> str:
-        return "glimmer_together"
+        return f"glimmer_{self._config.get('host', 'together')}"
 
     def _body(self, model: str, text: str) -> dict[str, Any]:
         return {

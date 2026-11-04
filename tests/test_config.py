@@ -3,6 +3,7 @@
 import pytest
 
 from mydrak.util.config import load_yaml
+from mydrak.live.guard import load_live_provider_config
 
 from conftest import REPO_ROOT
 
@@ -24,9 +25,12 @@ def test_models_config_is_explicitly_unverified():
     cfg = load_yaml(REPO_ROOT / "config" / "models.yaml")
     text = (REPO_ROOT / "config" / "models.yaml").read_text(encoding="utf-8")
     assert text.startswith("# UNVERIFIED until a smoke test passes.")
-    assert cfg["tier1"]["model_id"]
+    selected = load_live_provider_config(REPO_ROOT / "config" / "models.yaml", "tier1")
+    assert cfg["glimmer_host"]["choice"] == "nvidia"
+    assert selected["model_id"] == "meta/muse-glimmer-30b"
+    assert selected["credential_env_var"] == "NVIDIA_API_KEY"
     assert cfg["tier2"]["model_id"]
-    assert isinstance(cfg["tier1"]["price_input_per_1m"], (int, float))
+    assert isinstance(selected["price_input_per_1m"], (int, float))
     assert isinstance(cfg["tier2"]["price_output_per_1m"], (int, float))
 
 
@@ -42,3 +46,4 @@ def test_env_example_defaults_data_policy_to_private():
     assert "DATA_POLICY=private" in env_example
     assert "DATA_POLICY=public_test" not in env_example
     assert "TOGETHER_API_KEY=" in env_example
+    assert "NVIDIA_API_KEY=" in env_example

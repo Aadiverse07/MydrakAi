@@ -10,6 +10,7 @@ import time
 from typing import Any
 
 from mydrak.live.clients import GlimmerClient, LiveDiagnosisError, SparkClient
+from mydrak.live.diagnostics import safe_condition_id
 from mydrak.live.guard import (
     LiveConfigError, LiveGuardError, add_live_arguments, load_live_provider_config,
 )
@@ -95,7 +96,8 @@ def run_smoke(
             if exc.condition == "credential_missing":
                 category, condition = "missing_key", None
             else:
-                category, condition = "guard_refused", exc.condition
+                category = "guard_refused"
+                condition = safe_condition_id(exc.condition)
             _print_report(output, "failed", category, client.last_request_sent,
                           client.last_step, condition=condition,
                           latency_ms=(time.perf_counter() - started) * 1000)
@@ -142,8 +144,8 @@ def _print_report(output, status: str, category: str | None, request_sent: bool,
     fields = [f"status={status}"]
     if category is not None:
         fields.append(f"failure_category={category}")
-    if condition is not None:
-        fields.append(f"guard_condition={condition}")
+    if category == "guard_refused":
+        fields.append(f"guard_condition={safe_condition_id(condition)}")
     fields.extend((
         f"request_sent={str(request_sent).lower()}", f"latency_ms={latency:.2f}",
         f"tokens_in={tokens_in}", f"tokens_out={tokens_out}", f"estimated_cost_usd={cost}",

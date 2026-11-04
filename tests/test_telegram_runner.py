@@ -8,11 +8,12 @@ from types import SimpleNamespace
 import pytest
 
 from mydrak.bot.adapter import OfflineTelegramAdapter
-from mydrak.privacy.data_policy import DataClass, ProcessingEvidence, ProviderMode
+from mydrak.privacy.data_policy import DataClass
 from mydrak.telegram.client import TelegramClient
 from mydrak.telegram.config import AccessMode, PublicLimits
 from mydrak.telegram.limits import PublicLimitStore
 from mydrak.telegram.runner import NormalizedTelegramUpdate, TelegramBotRunner
+from mydrak.reply.templates import TELEGRAM_TEMPLATE_REVIEW_STATUS, telegram_message
 from mydrak.trace.store import TraceStore
 
 
@@ -44,15 +45,6 @@ class FakeTransport:
         return self.photo
 
 
-PRIVATE_EVIDENCE = ProcessingEvidence(
-    provider_mode=ProviderMode.STANDARD,
-    provider_mode_verified=True,
-    rights_confirmed=True,
-    user_authorization_confirmed=True,
-    privacy_notice_present=True,
-)
-
-
 def update(kind="command", *, update_id=1, chat_id="raw-chat-9876", user_id="raw-user-4567",
            chat_type="private", text="/start", photo_size=21, file_id="synthetic-file-id"):
     return NormalizedTelegramUpdate(update_id, chat_id, user_id, chat_type, kind,
@@ -62,9 +54,12 @@ def update(kind="command", *, update_id=1, chat_id="raw-chat-9876", user_id="raw
 
 def make_runner(tmp_path, *, mode=AccessMode.ALLOWLIST, allowed=None,
                 transport=None, adapter_evidence=None, limits=None, limit_store=None,
-                spark_config=None, evidence=None, workflow=None, stop=None):
+                spark_config=None, evidence=None, workflow=None, stop=None,
+                consent_notice_approved=False, allow_private_upload=False,
+                private_tier1_allowed=False):
     transport = transport or FakeTransport()
     trace = TraceStore(":memory:")
+    limit_store = limit_store or PublicLimitStore(tmp_path / "bot-limits.sqlite3")
     adapter = OfflineTelegramAdapter(
         data_policy_value="private", data_class=DataClass.PRIVATE,
         evidence=adapter_evidence,
@@ -75,7 +70,12 @@ def make_runner(tmp_path, *, mode=AccessMode.ALLOWLIST, allowed=None,
         allowed_chat_ids=allowed or frozenset({"raw-chat-9876"}),
         limits=limits, limit_store=limit_store,
         stop_path=stop or (tmp_path / "STOP"),
-        spark_config=spark_config or {}, processing_evidence=evidence,
+        spark_config={"model_id": "muse-spark-1.3",
+                      "model_id_contributor": "muse-spark-1.3-contributor",
+                      **(spark_config or {})}, processing_evidence=evidence,
+        consent_notice_approved=consent_notice_approved,
+        allow_private_upload=allow_private_upload,
+        private_tier1_allowed=private_tier1_allowed,
         spend_cap_available=lambda: True,
         spark_provider_factory=lambda **kwargs: None,
         workflow=workflow or (lambda *args, **kwargs: SimpleNamespace(
@@ -86,17 +86,33 @@ def make_runner(tmp_path, *, mode=AccessMode.ALLOWLIST, allowed=None,
     return runner, transport, trace
 
 
+def authorize_photo(runner, *, chat_id="raw-chat-9876", user_id="raw-user-4567"):
+    runner.handle_update(update(update_id=1, chat_id=chat_id, user_id=user_id, text="/start"))
+    runner.handle_update(update(update_id=2, chat_id=chat_id, user_id=user_id, text="/privacy"))
+    return runner.handle_update(
+        update(update_id=3, chat_id=chat_id, user_id=user_id, text="/agree")
+    )
+
+
 def test_start_shows_privacy_note_and_only_hashed_ids_reach_trace(tmp_path):
     runner, transport, trace = make_runner(tmp_path)
     result = runner.handle_update(update())
     assert result.sent
-    assert "sent to an AI model" in result.reply
+    assert "photo notice" in result.reply
     assert "raw-user-4567" not in result.reply
     assert result.user_hash == sha256(b"mydrak-telegram-v1:user:raw-user-4567").hexdigest()
     row = trace._connection.execute("SELECT user_hash FROM cases").fetchone()
     assert row[0] == result.user_hash
     assert "raw-user-4567" not in repr(result)
     assert transport.calls[0][0] == "sendMessage"
+
+
+def test_privacy_notice_template_is_draft_and_hindi_slot_is_unreviewed_not_served():
+    assert TELEGRAM_TEMPLATE_REVIEW_STATUS["privacy_notice"] == {
+        "en": "DRAFT", "hi": "UNREVIEWED",
+    }
+    with pytest.raises(ValueError, match="template is unavailable"):
+        telegram_message("privacy_notice", "hi")
 
 
 def test_help_language_and_rescan_commands_have_controlled_outcomes(tmp_path):
@@ -128,32 +144,130 @@ def test_photo_before_start_is_refused_without_file_download_or_provider(tmp_pat
     assert trace._connection.execute("SELECT COUNT(*) FROM cases").fetchone()[0] == 2
 
 
+def test_photo_after_start_but_before_consent_is_blocked_before_download(tmp_path):
+    runner, transport, _ = make_runner(tmp_path, consent_notice_approved=True,
+                                       allow_private_upload=True)
+    runner.handle_update(update())
+    result = runner.handle_update(update("photo", update_id=2, text=None))
+    assert result.reason == "privacy_block"
+    assert "/privacy" in result.reply
+    assert not any(call[0] in {"getFile", "download"} for call in transport.calls)
+
+
+def test_agree_requires_successfully_shown_current_notice(tmp_path):
+    runner, _transport, _ = make_runner(tmp_path, consent_notice_approved=True)
+    runner.handle_update(update())
+    result = runner.handle_update(update(update_id=2, text="/agree"))
+    assert "use /privacy" in result.reply.lower()
+    user_hash = sha256(b"mydrak-telegram-v1:user:raw-user-4567").hexdigest()
+    assert runner.limit_store.get_consent(user_hash) is None
+
+
+def test_unapproved_notice_refuses_agree_and_photo(tmp_path):
+    runner, transport, _ = make_runner(
+        tmp_path, consent_notice_approved=False, allow_private_upload=True,
+    )
+    runner.handle_update(update())
+    runner.handle_update(update(update_id=2, text="/privacy"))
+    agree = runner.handle_update(update(update_id=3, text="/agree"))
+    assert "not been approved" in agree.reply
+    photo = runner.handle_update(update("photo", update_id=4, text=None))
+    assert photo.reason == "privacy_block"
+    assert not any(call[0] in {"getFile", "download"} for call in transport.calls)
+
+
+def test_withdraw_revokes_and_blocks_later_photo(tmp_path):
+    runner, transport, _ = make_runner(
+        tmp_path, consent_notice_approved=True, allow_private_upload=True,
+    )
+    authorize_photo(runner)
+    user_hash = sha256(b"mydrak-telegram-v1:user:raw-user-4567").hexdigest()
+    assert runner.limit_store.get_consent(user_hash).revoked_at is None
+    withdrawn = runner.handle_update(update(update_id=4, text="/withdraw"))
+    assert "withdrawn" in withdrawn.reply.lower()
+    assert runner.limit_store.get_consent(user_hash).revoked_at is not None
+    result = runner.handle_update(update("photo", update_id=5, text=None))
+    assert result.reason == "privacy_block"
+    assert not any(call[0] in {"getFile", "download"} for call in transport.calls)
+
+
+def test_stale_notice_consent_is_rejected(tmp_path):
+    runner, transport, _ = make_runner(
+        tmp_path, consent_notice_approved=True, allow_private_upload=True,
+    )
+    runner.handle_update(update())
+    user_hash = sha256(b"mydrak-telegram-v1:user:raw-user-4567").hexdigest()
+    runner.limit_store.record_notice_shown(user_hash, "private-photo-old")
+    assert runner.limit_store.record_consent(user_hash, "private-photo-old")
+    result = runner.handle_update(update("photo", update_id=2, text=None))
+    assert result.reason == "privacy_block"
+    assert not any(call[0] in {"getFile", "download"} for call in transport.calls)
+
+
+def test_notice_consent_and_trace_database_store_hashes_not_raw_user_ids(tmp_path):
+    runner, _transport, trace = make_runner(
+        tmp_path, consent_notice_approved=True, allow_private_upload=True,
+    )
+    authorize_photo(runner)
+    db_path = runner.limit_store.path
+    runner.limit_store.close()
+    content = (tmp_path / "bot-limits.sqlite3").read_bytes()
+    assert b"raw-user-4567" not in content
+    assert sha256(b"mydrak-telegram-v1:user:raw-user-4567").hexdigest().encode() in content
+    rows = trace._connection.execute("SELECT user_hash FROM cases").fetchall()
+    assert all("raw-user-4567" not in repr(row) for row in rows)
+    assert db_path.endswith("bot-limits.sqlite3")
+
+
+def test_each_user_needs_their_own_consent_and_private_flow_stays_spark_only(tmp_path):
+    invoked = []
+    runner, transport, _ = make_runner(
+        tmp_path, allowed=frozenset({"raw-chat-9876", "raw-chat-2222"}),
+        consent_notice_approved=True, allow_private_upload=True,
+        private_tier1_allowed=False,
+        workflow=lambda mode, **_kwargs: invoked.append(mode) or SimpleNamespace(
+            action="refer", reply="preliminary guidance; cannot tell", overlay_bytes=None,
+        ),
+    )
+    authorize_photo(runner)
+    runner.handle_update(update("command", update_id=10, chat_id="raw-chat-2222",
+                                user_id="raw-user-2222", text="/start"))
+    blocked = runner.handle_update(update("photo", update_id=11, chat_id="raw-chat-2222",
+                                         user_id="raw-user-2222", text=None))
+    assert blocked.reason == "privacy_block"
+    allowed = runner.handle_update(update("photo", update_id=12, text=None))
+    assert allowed.sent
+    assert invoked == ["spark_only"]
+    assert not any("glimmer" in str(call).lower() for call in transport.calls)
+
+
 def test_private_upload_disabled_refuses_before_download_and_provider(tmp_path):
     called = []
     runner, transport, _ = make_runner(
-        tmp_path, adapter_evidence=PRIVATE_EVIDENCE, evidence=PRIVATE_EVIDENCE,
-        spark_config={"allow_private_upload": False},
+        tmp_path, consent_notice_approved=True, allow_private_upload=False,
         workflow=lambda *a, **k: called.append(1),
     )
-    runner.handle_update(update())
-    result = runner.handle_update(update("photo", update_id=2, text=None))
+    authorize_photo(runner)
+    result = runner.handle_update(update("photo", update_id=4, text=None))
     assert result.sent and "cannot be analyzed" in result.reply
     assert not called
     assert not any(call[0] in {"getFile", "download"} for call in transport.calls)
 
 
-def test_private_photo_flows_to_spark_only_with_rights_standard_and_start(tmp_path):
+def test_private_photo_flows_to_spark_only_after_notice_consent_and_current_evidence(tmp_path):
     captured = []
     def workflow(mode, **kwargs):
         captured.append((mode, kwargs))
         return SimpleNamespace(action="refer", reply="preliminary guidance; cannot tell",
                                overlay_bytes=b"SYNTHETIC-WATERMARK-OVERLAY")
     runner, transport, trace = make_runner(
-        tmp_path, adapter_evidence=PRIVATE_EVIDENCE, evidence=PRIVATE_EVIDENCE,
-        spark_config={"allow_private_upload": True}, workflow=workflow,
+        tmp_path, spark_config={}, workflow=workflow,
+        consent_notice_approved=True, allow_private_upload=True,
+        private_tier1_allowed=False,
     )
-    runner.handle_update(update())
-    result = runner.handle_update(update("photo", update_id=2, text=None))
+    consent = authorize_photo(runner)
+    assert consent.sent and "confirmed that you took the photo" in consent.reply
+    result = runner.handle_update(update("photo", update_id=4, text=None))
     assert result.sent
     assert len(captured) == 1
     mode, kwargs = captured[0]
@@ -161,6 +275,10 @@ def test_private_photo_flows_to_spark_only_with_rights_standard_and_start(tmp_pa
     assert kwargs["data_class"] is DataClass.PRIVATE
     assert kwargs["use_contributor"] is False
     assert kwargs["image_provenance"] == "private"
+    assert kwargs["evidence"].rights_confirmed is True
+    assert kwargs["evidence"].user_authorization_confirmed is True
+    assert kwargs["evidence"].privacy_notice_present is True
+    assert kwargs["provider_config"]["allow_private_upload"] is True
     assert kwargs["photo_bytes"] == b"synthetic-image-bytes"
     assert any(call[0] == "sendPhoto" and call[1]["photo"] == b"SYNTHETIC-WATERMARK-OVERLAY"
                for call in transport.calls)
@@ -170,20 +288,31 @@ def test_private_photo_flows_to_spark_only_with_rights_standard_and_start(tmp_pa
     assert b"synthetic-image-bytes" not in repr(stored).encode()
 
 
-def test_missing_rights_or_unverified_provider_refuses_private_photo(tmp_path):
-    evidence = ProcessingEvidence(provider_mode=ProviderMode.STANDARD,
-                                  provider_mode_verified=False, rights_confirmed=False)
+def test_unverified_contributor_model_refuses_private_photo(tmp_path):
     called = []
     runner, transport, _ = make_runner(
-        tmp_path, adapter_evidence=PRIVATE_EVIDENCE, evidence=evidence,
-        spark_config={"allow_private_upload": True},
+        tmp_path, spark_config={"model_id": "muse-spark-1.3-contributor"},
+        consent_notice_approved=True, allow_private_upload=True,
         workflow=lambda *a, **k: called.append(1),
     )
-    runner.handle_update(update())
-    result = runner.handle_update(update("photo", update_id=2, text=None))
+    authorize_photo(runner)
+    result = runner.handle_update(update("photo", update_id=4, text=None))
     assert result.sent and "cannot be analyzed" in result.reply
     assert not called
-    assert not any(call[0] == "getFile" for call in transport.calls)
+    assert not any(call[0] in {"getFile", "download"} for call in transport.calls)
+
+
+def test_private_tier1_opt_in_fails_closed_without_a_supported_glimmer_route(tmp_path):
+    called = []
+    runner, transport, _ = make_runner(
+        tmp_path, consent_notice_approved=True, allow_private_upload=True,
+        private_tier1_allowed=True, workflow=lambda *a, **k: called.append(1),
+    )
+    authorize_photo(runner)
+    result = runner.handle_update(update("photo", update_id=4, text=None))
+    assert result.reason == "privacy_block"
+    assert not called
+    assert not any(call[0] in {"getFile", "download"} for call in transport.calls)
 
 
 def test_public_limits_refuse_request_without_provider_call(tmp_path):
@@ -203,12 +332,21 @@ def test_public_limits_refuse_request_without_provider_call(tmp_path):
     store.close()
 
 
+def test_public_runner_refuses_when_demo_draft_preview_is_enabled(tmp_path, monkeypatch):
+    monkeypatch.setattr("mydrak.telegram.runner.load_demo_draft_preview", lambda: True)
+    limits = PublicLimits(1, 10, Decimal("2"), 100, 0)
+    store = PublicLimitStore(tmp_path / "public-limits.sqlite3")
+    with pytest.raises(ValueError, match="demo draft preview is refused in public mode"):
+        make_runner(
+            tmp_path, mode=AccessMode.PUBLIC, limits=limits, limit_store=store,
+        )
+    store.close()
+
+
 def test_spend_cap_gate_replies_without_workflow_or_photo_download(tmp_path):
     called = []
-    evidence = PRIVATE_EVIDENCE
     runner, transport, _ = make_runner(
-        tmp_path, adapter_evidence=evidence, evidence=evidence,
-        spark_config={"allow_private_upload": True},
+        tmp_path, consent_notice_approved=True, allow_private_upload=True,
         workflow=lambda *a, **k: called.append(1),
     )
     runner.spend_cap_available = lambda: False

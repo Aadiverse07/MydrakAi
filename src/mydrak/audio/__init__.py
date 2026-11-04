@@ -1,1 +1,1 @@
-"""Audio: ffmpeg OGG->wav conversion and transcription client. Deferred past Phase 0."""
+"""Local bounded audio conversion and explicitly guarded voice transcription."""

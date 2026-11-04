@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from datetime import datetime, timezone
 from pathlib import Path
 import time
 from typing import Any
@@ -11,15 +10,15 @@ from typing import Any
 from mydrak.bot.adapter import (
     ConversationStatus, OfflineTelegramAdapter, OfflineUpdate,
 )
-from mydrak.intake.adapter import MAX_IMAGE_BYTES
-from mydrak.privacy.data_policy import (
-    DataClass, DataPolicy, ProcessingEvidence, ProviderMode,
-)
+from mydrak.privacy.data_policy import ProcessingEvidence
 from mydrak.reply.templates import telegram_message
 from mydrak.telegram.client import TelegramClient, TelegramClientError
+from mydrak.telegram.consent import CONSENT_NOTICE_VERSION
 from mydrak.telegram.config import AccessMode, PublicLimits
 from mydrak.telegram.delivery import TelegramDelivery
 from mydrak.telegram.limits import PublicLimitStore
+from mydrak.telegram.photo_flow import handle_private_photo
+from mydrak.reply.preview import load_demo_draft_preview
 from mydrak.telegram.updates import (
     NormalizedTelegramUpdate, RunnerOutcome, SkippedTelegramUpdate,
     digest_id, valid_normalized_update,
@@ -41,6 +40,9 @@ class TelegramBotRunner(TelegramDelivery):
         spark_config: Mapping[str, Any] | None = None,
         spark_provider_factory: Callable[..., Any] | None = None,
         processing_evidence: ProcessingEvidence | None = None,
+        consent_notice_approved: bool = False,
+        allow_private_upload: bool = False,
+        private_tier1_allowed: bool = False,
         spend_cap_available: Callable[[], bool] | None = None,
         workflow: Callable[..., Any] = run_pipeline_mode,
         sleep: Callable[[float], None] = time.sleep,
@@ -55,8 +57,14 @@ class TelegramBotRunner(TelegramDelivery):
             raise ValueError("public mode requires complete limits and persistent storage")
         if mode is AccessMode.PUBLIC and not callable(spend_cap_available):
             raise ValueError("public mode requires the shared spend-ledger cap check")
+        if mode is AccessMode.PUBLIC and load_demo_draft_preview():
+            raise ValueError("demo draft preview is refused in public mode")
         if processing_evidence is not None and not isinstance(processing_evidence, ProcessingEvidence):
             raise ValueError("processing evidence is invalid")
+        if any(type(value) is not bool for value in (
+            consent_notice_approved, allow_private_upload, private_tier1_allowed,
+        )):
+            raise ValueError("private-photo settings must be booleans")
         self.client = client
         self.trace_store = trace_store
         self.adapter = adapter
@@ -65,9 +73,14 @@ class TelegramBotRunner(TelegramDelivery):
         self.limits = limits
         self.limit_store = limit_store
         self.stop_path = Path(stop_path)
-        self.spark_config = spark_config or {}
+        self.spark_config = dict(spark_config or {})
+        self.spark_config["allow_private_upload"] = allow_private_upload
+        self.consent_notice_approved = consent_notice_approved
+        self.allow_private_upload = allow_private_upload
+        self.private_tier1_allowed = private_tier1_allowed
         self.spark_provider_factory = spark_provider_factory
-        self.processing_evidence = processing_evidence
+        # Kept as a constructor compatibility argument; photos use fresh
+        # consent-derived evidence in photo_flow.py, never this static value.
         self.spend_cap_available = spend_cap_available
         self.workflow = workflow
         self.sleep = sleep
@@ -143,10 +156,45 @@ class TelegramBotRunner(TelegramDelivery):
                  user_hash: str) -> RunnerOutcome:
         command = update.text or ""
         result = self.adapter.handle_update(OfflineUpdate(chat_hash, "command", command))
-        cmd = command.split(maxsplit=1)[0].split("@", 1)[0].lower()
+        parts = command.split(maxsplit=1)
+        cmd = parts[0].split("@", 1)[0].lower()
+        argument = parts[1] if len(parts) == 2 else ""
         start_requested = cmd == "/start" and result.status == "welcome"
         if start_requested:
             reply = telegram_message("start")
+        elif cmd == "/privacy" and not argument:
+            reply = telegram_message("privacy_notice")
+        elif cmd == "/agree" and not argument:
+            if not self.consent_notice_approved:
+                reply = telegram_message("consent_unavailable")
+            elif self.limit_store is None:
+                reply = telegram_message("consent_storage_unavailable")
+            else:
+                try:
+                    shown = self.limit_store.notice_was_shown(
+                        user_hash, CONSENT_NOTICE_VERSION,
+                    )
+                    recorded = (
+                        self.limit_store.record_consent(
+                            user_hash, CONSENT_NOTICE_VERSION,
+                        ) if shown else False
+                    )
+                except Exception:
+                    shown, recorded = False, False
+                reply = telegram_message("notice_required" if not shown else (
+                    "consent_recorded" if recorded else "consent_storage_unavailable"
+                ))
+        elif cmd == "/withdraw" and not argument:
+            try:
+                withdrawn = (
+                    self.limit_store.revoke_consent(user_hash)
+                    if self.limit_store is not None else False
+                )
+            except Exception:
+                withdrawn = False
+            reply = telegram_message(
+                "consent_withdrawn" if withdrawn else "consent_not_active"
+            )
         elif cmd == "/rescan":
             reply = telegram_message("rescan_unavailable")
         elif cmd == "/help":
@@ -168,126 +216,17 @@ class TelegramBotRunner(TelegramDelivery):
         if start_requested and sent.sent:
             # A failed privacy-notice delivery must not grant photo processing.
             self._started_chats.add(chat_hash)
+        if cmd == "/privacy" and not argument and sent.sent and self.limit_store is not None:
+            try:
+                self.limit_store.record_notice_shown(user_hash, CONSENT_NOTICE_VERSION)
+            except Exception:
+                return self._send(
+                    update.chat_id, user_hash,
+                    telegram_message("consent_storage_unavailable"),
+                    "privacy_notice_storage_failure",
+                )
         return sent
 
     def _photo(self, update: NormalizedTelegramUpdate, chat_hash: str,
                user_hash: str) -> RunnerOutcome:
-        if chat_hash not in self._started_chats:
-            self._trace(user_hash, "telegram_photo", "start_required", "refer")
-            return self._send(update.chat_id, user_hash,
-                              telegram_message("start_required"),
-                              "start_required")
-        if update.photo_size is None or type(update.photo_size) is not int or update.photo_size < 1:
-            self._trace(user_hash, "telegram_photo", "invalid_size", "retake")
-            return self._send(
-                update.chat_id, user_hash, telegram_message("send_photo"), "invalid_photo"
-            )
-        max_bytes = self.limits.max_photo_bytes if self.mode is AccessMode.PUBLIC else MAX_IMAGE_BYTES
-        if update.photo_size > max_bytes:
-            self._trace(user_hash, "telegram_photo", "size_limit", "retake")
-            return self._send(
-                update.chat_id, user_hash, telegram_message("limited"), "photo_size_limit"
-            )
-        if self.spend_cap_available is not None:
-            try:
-                has_headroom = self.spend_cap_available() is True
-            except Exception:
-                has_headroom = False
-            if not has_headroom:
-                self._trace(user_hash, "global_spend_limit", "blocked", "refer")
-                return self._send(
-                    update.chat_id, user_hash, telegram_message("limited"), "global_spend_limit"
-                )
-        if self.mode is AccessMode.PUBLIC:
-            assert self.limits is not None and self.limit_store is not None
-            try:
-                reserved = self.limit_store.reserve_photo(
-                    user_hash, limits=self.limits, photo_size=update.photo_size,
-                    now=datetime.now(timezone.utc),
-                )
-            except Exception:
-                self._trace(user_hash, "public_limit", "unavailable", "refer")
-                return self._send(
-                    update.chat_id, user_hash, telegram_message("limited"), "public_limit_unavailable"
-                )
-            if not reserved.allowed:
-                self._trace(user_hash, "public_limit", reserved.reason or "blocked", "refer")
-                return self._send(
-                    update.chat_id, user_hash, telegram_message("limited"), "public_limit"
-                )
-
-        result = self.adapter.handle_update(OfflineUpdate(chat_hash, "photo"))
-        if result.status != "deferred" or result.reason != "preprocessing_and_diagnosis_unavailable":
-            self._trace(user_hash, "telegram_photo", "policy_blocked", "refer")
-            return self._send(
-                update.chat_id, user_hash, telegram_message("photo_blocked"), "privacy_block"
-            )
-        if self.spark_config.get("allow_private_upload") is not True:
-            self._trace(user_hash, "telegram_photo", "private_upload_disabled", "refer")
-            return self._send(
-                update.chat_id, user_hash, telegram_message("photo_blocked"), "privacy_block"
-            )
-        if (
-            self.processing_evidence is None
-            or not self.processing_evidence.rights_confirmed
-            or not self.processing_evidence.provider_mode_verified
-            or self.processing_evidence.provider_mode is not ProviderMode.STANDARD
-        ):
-            self._trace(user_hash, "telegram_photo", "private_evidence_unavailable", "refer")
-            return self._send(
-                update.chat_id, user_hash, telegram_message("photo_blocked"), "privacy_block"
-            )
-
-        try:
-            if not update.photo_file_id:
-                raise TelegramClientError("photo file reference unavailable")
-            file = self._retry_operation(lambda: self.client.get_file(update.photo_file_id))
-            if (
-                (file.file_size is not None and file.file_size != update.photo_size)
-                or update.photo_size > max_bytes
-                or (file.file_size is not None and file.file_size > max_bytes)
-            ):
-                self._trace(user_hash, "telegram_photo", "file_size_limit", "retake")
-                return self._send(
-                    update.chat_id, user_hash, telegram_message("limited"), "photo_size_limit"
-                )
-            photo_bytes = self._retry_operation(
-                lambda: self.client.download_file(file.file_path, max_bytes=max_bytes)
-            )
-            if not photo_bytes:
-                raise TelegramClientError("photo bytes unavailable")
-            self.adapter.begin_analysis(chat_hash)
-            evidence = ProcessingEvidence(
-                provider_mode=ProviderMode.STANDARD,
-                provider_mode_verified=True,
-                rights_confirmed=True,
-                user_authorization_confirmed=True,
-                privacy_notice_present=True,
-            )
-            result = self.workflow(
-                "spark_only", photo_bytes=photo_bytes, language="en",
-                trace_store=self.trace_store,
-                spark_provider_factory=self.spark_provider_factory,
-                provider_config=self.spark_config,
-                data_policy_value=DataPolicy.PRIVATE.value,
-                data_class=DataClass.PRIVATE, image_provenance="private",
-                evidence=evidence, use_contributor=False,
-                user_hash=user_hash,
-            )
-            state = {
-                "answer": ConversationStatus.ANSWERED,
-                "ask": ConversationStatus.AWAITING_FOLLOWUP,
-                "retake": ConversationStatus.RETAKE,
-                "refer": ConversationStatus.REFERRED,
-                "blocked": ConversationStatus.REFERRED,
-            }.get(result.action, ConversationStatus.REFERRED)
-            self.adapter.apply_workflow_outcome(chat_hash, state)
-            reply = result.reply or telegram_message("photo_blocked")
-            overlay = getattr(result, "overlay_bytes", None)
-            del photo_bytes
-            return self._send(update.chat_id, user_hash, reply, "photo_result", photo=overlay)
-        except Exception:
-            self._trace(user_hash, "telegram_photo", "workflow_failed", "refer")
-            return self._send(
-                update.chat_id, user_hash, telegram_message("photo_blocked"), "workflow_failed"
-            )
+        return handle_private_photo(self, update, chat_hash, user_hash)

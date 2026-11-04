@@ -239,6 +239,9 @@ def coordinate_followup_answer(
     safety_card: Mapping[str, Any],
     next_question_id: str | None = None,
     alternatives: Sequence[str] = (),
+    demo_draft_preview: bool | None = None,
+    public_mode: bool = False,
+    card_path: str | Path | None = None,
 ) -> FollowUpStep:
     """Advance one transient answer using a caller-selected KB question.
 
@@ -254,6 +257,9 @@ def coordinate_followup_answer(
             safety_card=safety_card,
             question_id=next_question_id,
             alternatives=alternatives,
+            demo_draft_preview=demo_draft_preview,
+            public_mode=public_mode,
+            card_path=card_path,
         )
     except FollowUpError:
         raise OfflineCoordinatorError("follow-up transition was rejected") from None

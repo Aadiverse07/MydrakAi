@@ -7,9 +7,11 @@ exercise the rendering contract; they are not evidence of field accuracy.
 
 from collections.abc import Mapping, Sequence
 import math
+from pathlib import Path
 from typing import Any
 
 from mydrak.reply.templates import TEMPLATES
+from mydrak.reply.preview import draft_preview_banner, resolve_preview_enabled
 
 CONFIDENCE_WORDS = frozenset({"fairly sure", "not sure", "cannot tell"})
 SUPPORTED_ACTIONS = frozenset({"answer", "ask", "refer", "retake"})
@@ -44,16 +46,15 @@ def _safety_text(safety_card: Mapping[str, Any], key: str) -> str:
     return _text(safety_card.get(key), key)
 
 
-def _require_approved_card(card: Mapping[str, Any]) -> None:
-    """Fail closed before rendering any farmer-facing disease-card content."""
-    review_status = card.get("review_status")
-    if (
-        card.get("status") != "verified"
-        or not isinstance(review_status, Mapping)
-        or review_status.get("en") != "REVIEWED"
-        or review_status.get("hi") != "REVIEWED"
-    ):
-        raise ReplyError("KB card is not approved for farmer-facing replies")
+def _card_banner(card: Mapping[str, Any], *, action: str, language: str,
+                 enabled: bool, card_path: str | Path | None) -> str | None:
+    try:
+        return draft_preview_banner(
+            card, action=action, language=language, enabled=enabled,
+            card_path=card_path,
+        )
+    except ValueError as exc:
+        raise ReplyError(str(exc)) from None
 
 
 def _severity(value: Any) -> str:
@@ -89,6 +90,9 @@ def compose_reply(
     severity_pct: int | float | None = None,
     question_id: str | None = None,
     alternatives: Sequence[str] = (),
+    demo_draft_preview: bool | None = None,
+    public_mode: bool = False,
+    card_path: str | None = None,
 ) -> str:
     """Render one English reply from validated structured/KB data.
 
@@ -101,14 +105,26 @@ def compose_reply(
         raise ReplyError("unsupported reply action")
     if not isinstance(language, str) or language not in TEMPLATES:
         raise ReplyError("unsupported reply language")
-    if TEMPLATES[language] is None:
-        raise ReplyError("requested language template is unavailable")
     if not isinstance(card, Mapping) or not isinstance(safety_card, Mapping):
         raise ReplyError("reply and safety cards must be mappings")
+    preview_enabled = False
+    banner = None
+    if action in {"answer", "ask"}:
+        try:
+            preview_enabled = resolve_preview_enabled(
+                demo_draft_preview, public_mode=public_mode,
+            )
+            banner = _card_banner(
+                card, action=action, language=language, enabled=preview_enabled,
+                card_path=card_path,
+            )
+        except ValueError as exc:
+            raise ReplyError(str(exc)) from None
+    if TEMPLATES[language] is None:
+        raise ReplyError("requested language template is unavailable")
     templates = TEMPLATES[language]
 
     if action == "answer":
-        _require_approved_card(card)
         names = _localized(card, "names", language)
         issue = _text(names.get(language), "English issue name")
         crop = _text(card.get("crop"), "crop")
@@ -127,12 +143,13 @@ def compose_reply(
             "referral_text": referral_text,
         }
         if severity_pct is None:
-            return templates["answer_without_severity"].format(**values)
-        values["severity"] = _severity(severity_pct)
-        return templates["answer"].format(**values)
+            rendered = templates["answer_without_severity"].format(**values)
+        else:
+            values["severity"] = _severity(severity_pct)
+            rendered = templates["answer"].format(**values)
+        return f"{banner}\n{rendered}" if banner else rendered
 
     if action == "ask":
-        _require_approved_card(card)
         if not isinstance(question_id, str) or not question_id:
             raise ReplyError("question_id is required for an ask reply")
         question = _follow_up(card, question_id)
@@ -140,10 +157,12 @@ def compose_reply(
             raise ReplyError("alternatives must be a sequence of KB labels")
         labels = [_text(value, "alternative") for value in alternatives]
         if labels:
-            return templates["ask_with_alternatives"].format(
+            rendered = templates["ask_with_alternatives"].format(
                 alternatives=" or ".join(labels), question=question
             )
-        return templates["ask"].format(question=question)
+        else:
+            rendered = templates["ask"].format(question=question)
+        return f"{banner}\n{rendered}" if banner else rendered
 
     if action == "refer":
         return templates["refer"].format(

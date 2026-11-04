@@ -1,6 +1,7 @@
 """Access mode and public limit configuration fails closed."""
 
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 import yaml
@@ -8,6 +9,7 @@ import yaml
 from mydrak.telegram.config import (
     AccessMode, BotConfigError, load_public_limits, resolve_access_mode,
 )
+from conftest import REPO_ROOT
 
 
 def test_allowlist_is_default_and_requires_nonempty_ids():
@@ -82,3 +84,15 @@ def test_invalid_cooldown_refuses(tmp_path, cooldown):
     }), encoding="utf-8")
     with pytest.raises(BotConfigError):
         load_public_limits(path)
+
+
+def test_user_approved_repository_public_limits_load():
+    path = REPO_ROOT / "config" / "bot_limits.yaml"
+    if not path.is_file():
+        pytest.skip("local ignored public limits file is not present")
+    limits = load_public_limits(path)
+    assert limits.per_user_daily_requests == 10
+    assert limits.global_daily_requests == 200
+    assert limits.global_spend_cap_usd == Decimal("15")
+    assert limits.max_photo_bytes == 5_242_880
+    assert limits.min_seconds_between_requests_per_user == 20

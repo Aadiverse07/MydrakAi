@@ -1,0 +1,5 @@
+# Local demonstration behavior. Draft preview is explicitly opt-in.
+demo_draft_preview: false
+consent_notice_approved: false
+allow_private_upload: false
+private_tier1_allowed: false

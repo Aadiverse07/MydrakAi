@@ -15,7 +15,14 @@ def parse_chat_response(raw: bytes, *, max_bytes: int) -> tuple[str, int | None,
     choices = document["choices"]
     if not isinstance(choices, list) or not choices:
         raise ValueError
-    content = choices[0]["message"]["content"]
+    message = choices[0]["message"]
+    if not isinstance(message, Mapping):
+        raise ValueError
+    content = message.get("content")
+    # Some compatible servers may return null final content with a separate
+    # reasoning field. Only final content is exposed to downstream validation.
+    if content is None:
+        content = ""
     if not isinstance(content, str):
         raise ValueError
     usage = document.get("usage")

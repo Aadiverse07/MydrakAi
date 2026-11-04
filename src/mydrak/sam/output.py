@@ -32,10 +32,10 @@ Rules, all fail-closed (SamOutputError, a ValueError, on any violation):
   (UNVERIFIED per the matrix). Pass custom limits to exercise oversized input
   without huge allocations.
 
-No SAM client exists in this repository; a future client must map the real
-`output_text` records onto this grammar first, and that mapping itself remains
-UNVERIFIED until tested against official documentation or an authorized
-response sample.
+A guarded SAM request client now exists in `sam/live_client.py`; this parser
+still validates only the project-local synthetic JSON fixture grammar above.
+It does not map provider `output_text` records, and no provider response sample
+has verified compatibility with this grammar.
 """
 
 import math

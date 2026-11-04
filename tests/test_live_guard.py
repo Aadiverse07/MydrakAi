@@ -5,9 +5,11 @@ import argparse
 from pathlib import Path
 
 import pytest
+import yaml
 
 from mydrak.live.guard import (
-    LiveGuardError, add_live_arguments, load_live_provider_config, reserve_live_call,
+    LiveGuardError, add_live_arguments, load_live_provider_config,
+    reserve_live_call, reserve_live_estimated_cost,
 )
 from mydrak.live.retry import call_with_retries
 from mydrak.privacy.data_policy import (
@@ -79,6 +81,40 @@ def test_worst_case_reservations_accumulate_in_persistent_ledger(tmp_path):
     assert second.cumulative_reserved_usd == Decimal("0.012")
     with pytest.raises(LiveGuardError, match="exceeds spend cap"):
         reserve(tmp_path, max_spend_usd="0.013")
+
+
+def test_fixed_cost_reservation_shares_guards_and_accumulates(tmp_path):
+    config = {"model_id": "sam-3.1", "endpoint": "https://api.meta.ai/v1", "timeout_s": 30}
+    arguments = {
+        "config": config, "estimated_usd": "0.0025", "cli_authorized": True,
+        "environ": GOOD_ENV, "max_spend_usd": "0.01",
+        "ledger_path": tmp_path / "ledger.sqlite3",
+    }
+    first = reserve_live_estimated_cost(**arguments)
+    second = reserve_live_estimated_cost(**arguments)
+    assert first.estimated_usd == Decimal("0.0025")
+    assert first.cumulative_reserved_usd == Decimal("0.0025")
+    assert second.cumulative_reserved_usd == Decimal("0.0050")
+
+
+@pytest.mark.parametrize("override,condition", [
+    ({"cli_authorized": False}, "cli_authorization"),
+    ({"environ": {"META_API_KEY": "synthetic-test-key"}}, "MYDRAK_LIVE"),
+    ({"environ": {"MYDRAK_LIVE": "1"}}, "credential_missing"),
+    ({"max_spend_usd": None}, "max_spend_usd"),
+    ({"estimated_usd": None}, "cost_unknown"),
+])
+def test_fixed_cost_reservation_refuses_missing_live_gates(tmp_path, override, condition):
+    arguments = {
+        "config": {"model_id": "voice", "endpoint": "https://api.meta.ai/v1", "timeout_s": 30},
+        "estimated_usd": "0.001", "cli_authorized": True, "environ": GOOD_ENV,
+        "max_spend_usd": "0.01", "ledger_path": tmp_path / "ledger.sqlite3",
+    }
+    arguments.update(override)
+    with pytest.raises(LiveGuardError) as exc:
+        reserve_live_estimated_cost(**arguments)
+    assert exc.value.condition == condition
+    assert not (tmp_path / "ledger.sqlite3").exists()
 
 
 def test_guard_does_not_echo_or_retain_synthetic_credential(tmp_path):
@@ -226,6 +262,63 @@ def test_current_config_estimate_bounds_worst_case_cost(tmp_path):
         + Decimal(tier1["max_tokens"]) * Decimal(str(tier1["price_output_per_1m"]))
     ) / Decimal(1_000_000)
     assert reservation.estimated_usd == expected
+
+
+def test_glimmer_host_profiles_select_nvidia_by_default_and_keep_together_available(tmp_path):
+    repository_config = Path(__file__).resolve().parents[1] / "config" / "models.yaml"
+    nvidia = load_live_provider_config(repository_config, "tier1")
+    assert nvidia["host"] == "nvidia"
+    assert nvidia["endpoint"] == "https://integrate.api.nvidia.com/v1"
+    assert nvidia["model_id"] == "meta/muse-glimmer-30b"
+    assert nvidia["credential_env_var"] == "NVIDIA_API_KEY"
+    assert (nvidia["price_input_per_1m"], nvidia["price_output_per_1m"]) == (0.35, 1.50)
+    assert nvidia["timeout_s"] == 30 and nvidia["max_tokens"] == 512
+    assert nvidia["max_input_tokens_estimate"] == 4000 and nvidia["samples_per_case"] == 2
+
+    document = yaml.safe_load(repository_config.read_text(encoding="utf-8"))
+    document["glimmer_host"]["choice"] = "together"
+    together_path = tmp_path / "models.yaml"
+    together_path.write_text(yaml.safe_dump(document), encoding="utf-8")
+    together = load_live_provider_config(together_path, "tier1")
+    assert together["host"] == "together"
+    assert together["endpoint"] == "https://api.together.xyz/v1"
+    assert together["model_id"] == "meta-models/Muse-Glimmer-30B"
+    assert together["credential_env_var"] == "TOGETHER_API_KEY"
+    assert (together["price_input_per_1m"], together["price_output_per_1m"]) == (0.35, 1.50)
+
+
+@pytest.mark.parametrize("missing_gate", [
+    "cli", "live_env", "cap", "ledger", "unknown_price",
+])
+def test_selected_nvidia_profile_keeps_every_existing_guard(tmp_path, missing_gate):
+    repository_config = Path(__file__).resolve().parents[1] / "config" / "models.yaml"
+    config = load_live_provider_config(repository_config, "tier1")
+    kwargs = {
+        "config": config,
+        "cli_authorized": True,
+        "environ": {"MYDRAK_LIVE": "1", "NVIDIA_API_KEY": "SYNTHETIC-NVIDIA-KEY"},
+        "max_spend_usd": "1",
+        "ledger_path": tmp_path / "nvidia-ledger.sqlite",
+        "credential_env_var": config["credential_env_var"],
+    }
+    if missing_gate == "cli":
+        kwargs["cli_authorized"] = False
+        expected = "cli_authorization"
+    elif missing_gate == "live_env":
+        kwargs["environ"] = {"NVIDIA_API_KEY": "SYNTHETIC-NVIDIA-KEY"}
+        expected = "MYDRAK_LIVE"
+    elif missing_gate == "cap":
+        kwargs["max_spend_usd"] = None
+        expected = "max_spend_usd"
+    elif missing_gate == "ledger":
+        kwargs["ledger_path"] = tmp_path / "missing-dir" / "ledger.sqlite"
+        expected = "spend_ledger"
+    else:
+        kwargs["config"] = config | {"price_input_per_1m": None}
+        expected = "price_input_per_1m"
+    with pytest.raises(LiveGuardError) as caught:
+        reserve_live_call(**kwargs)
+    assert caught.value.condition == expected
 
 
 def test_missing_input_token_estimate_refuses_before_ledger_write(tmp_path):

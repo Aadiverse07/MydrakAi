@@ -8,10 +8,13 @@ from decimal import Decimal
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
+import yaml
 
 from mydrak.live.clients import GlimmerClient, LiveDiagnosisError, SparkClient
+from mydrak.live.guard import load_live_provider_config
 from mydrak.privacy.data_policy import (
     DataClass, DataPolicy, DataPolicyError, ProcessingEvidence, ProviderMode,
 )
@@ -29,7 +32,8 @@ CONFIG = {
     "timeout_s": 3, "max_input_tokens_estimate": 1000, "max_tokens": 1000,
     "price_input_per_1m": 2, "price_output_per_1m": 4,
 }
-ENV = {"MYDRAK_LIVE": "1", "TOGETHER_API_KEY": SECRET, "META_API_KEY": SECRET}
+ENV = {"MYDRAK_LIVE": "1", "TOGETHER_API_KEY": SECRET,
+       "NVIDIA_API_KEY": SECRET, "META_API_KEY": SECRET}
 VALID = json.dumps({
     "plant_visible": True, "crop": "tomato", "issue": "leaf_spot",
     "alternatives": [], "symptoms_observed": ["spots"], "image_issues": [],
@@ -110,6 +114,62 @@ def test_glimmer_serializes_documented_multimodal_shape_and_traces_tokens(tmp_pa
     )]
     assert SECRET not in repr(trace)
     assert SECRET not in json.dumps(body)
+
+
+def test_selected_nvidia_profile_uses_nvidia_endpoint_model_key_and_trace_label(tmp_path):
+    repository_config = Path(__file__).resolve().parents[1] / "config" / "models.yaml"
+    config = load_live_provider_config(repository_config, "tier1")
+    transport = FakeTransport([response()])
+    trace = []
+    client = GlimmerClient(
+        config, image_bytes=b"\xff\xd8\xffsynthetic", data_policy=DataPolicy.PUBLIC_TEST,
+        data_class=DataClass.PUBLIC_TEST, public_test_marker="public-test", rights_confirmed=True,
+        cli_authorized=True, max_spend_usd="1", ledger_path=str(tmp_path / "ledger.sqlite"),
+        environ={"MYDRAK_LIVE": "1", "NVIDIA_API_KEY": SECRET}, transport=transport,
+        trace_callback=trace.append, retry_delays_s=(), sleep=lambda _: None,
+        supported_crops=("tomato",), disease_ids=("leaf_spot",),
+    )
+    assert client.generate() == VALID
+    url, headers, body, _ = transport.calls[0]
+    assert url == "https://integrate.api.nvidia.com/v1/chat/completions"
+    assert headers["Authorization"] == f"Bearer {SECRET}"
+    assert body["model"] == "meta/muse-glimmer-30b"
+    assert trace[0].step_name == "glimmer_nvidia"
+    assert SECRET not in repr(trace)
+
+
+def test_selected_together_profile_still_uses_together_values_and_key(tmp_path):
+    repository_config = Path(__file__).resolve().parents[1] / "config" / "models.yaml"
+    document = yaml.safe_load(repository_config.read_text(encoding="utf-8"))
+    document["glimmer_host"]["choice"] = "together"
+    config_path = tmp_path / "models.yaml"
+    config_path.write_text(yaml.safe_dump(document), encoding="utf-8")
+    config = load_live_provider_config(config_path, "tier1")
+    transport = FakeTransport([response()])
+    client = GlimmerClient(
+        config, image_bytes=b"\xff\xd8\xffsynthetic", data_policy=DataPolicy.PUBLIC_TEST,
+        data_class=DataClass.PUBLIC_TEST, public_test_marker="public-test", rights_confirmed=True,
+        cli_authorized=True, max_spend_usd="1", ledger_path=str(tmp_path / "ledger.sqlite"),
+        environ={"MYDRAK_LIVE": "1", "TOGETHER_API_KEY": SECRET}, transport=transport,
+        trace_callback=lambda _: None, retry_delays_s=(), sleep=lambda _: None,
+        supported_crops=("tomato",), disease_ids=("leaf_spot",),
+    )
+    assert client.generate() == VALID
+    url, headers, body, _ = transport.calls[0]
+    assert url == "https://api.together.xyz/v1/chat/completions"
+    assert headers["Authorization"] == f"Bearer {SECRET}"
+    assert body["model"] == "meta-models/Muse-Glimmer-30B"
+
+
+def test_separate_reasoning_field_is_ignored_and_never_traced(tmp_path):
+    reasoning = "SYNTHETIC_REASONING_MUST_NOT_ESCAPE"
+    envelope = response()
+    envelope["choices"][0]["message"]["reasoning"] = reasoning
+    trace = []
+    client = glimmer(tmp_path, FakeTransport([envelope]), callback=trace.append)
+    assert client.generate() == VALID
+    assert reasoning not in repr(client.last_step)
+    assert reasoning not in repr(trace)
 
 
 def test_spark_serializes_text_only_and_selects_contributor_only_for_public_test(tmp_path):

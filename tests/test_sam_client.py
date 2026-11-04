@@ -237,6 +237,7 @@ def test_exact_nested_body_with_public_url():
     ) == {
         "model": "sam-3.1",
         "input": [{
+            "type": "message",
             "role": "user",
             "content": [
                 {"type": "input_text", "text": "green leaf"},

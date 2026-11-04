@@ -11,6 +11,7 @@ import sys
 from typing import Any
 
 from mydrak.bot.adapter import OfflineTelegramAdapter
+from mydrak.reply.preview import load_private_photo_settings
 from mydrak.live.clients import SparkClient
 from mydrak.live.guard import (
     DEFAULT_SPEND_LEDGER, LiveGuardError, add_live_arguments,
@@ -60,6 +61,7 @@ def run(argv: list[str] | None = None, *, environ: dict[str, str] | None = None,
         if not isinstance(token, str) or not token:
             raise BotConfigError("TELEGRAM_BOT_TOKEN is required")
         spark = load_live_provider_config(_ROOT / "config" / "models.yaml", "tier2")
+        privacy_settings = load_private_photo_settings()
     except (BotConfigError, LiveGuardError, ValueError):
         print("Telegram startup refused; check access mode, live guard, and local configuration.",
               file=error_stream)
@@ -72,7 +74,8 @@ def run(argv: list[str] | None = None, *, environ: dict[str, str] | None = None,
     try:
         client = TelegramClient.from_environment(environ=environment)
         trace = TraceStore(_ROOT / ".mydrak-trace.sqlite3")
-        limit_store = PublicLimitStore(_ROOT / ".mydrak-bot-limits.sqlite3") if limits else None
+        # Consent and notice-view records share the existing local limits DB.
+        limit_store = PublicLimitStore(_ROOT / ".mydrak-bot-limits.sqlite3")
     except (TelegramClientError, ValueError, OSError):
         print("Telegram startup refused; local client or storage is unavailable.", file=error_stream)
         return 2
@@ -93,6 +96,9 @@ def run(argv: list[str] | None = None, *, environ: dict[str, str] | None = None,
         mode=mode, allowed_chat_ids=allowlist, limits=limits,
         limit_store=limit_store, spark_config=spark,
         spark_provider_factory=spark_factory,
+        consent_notice_approved=privacy_settings["consent_notice_approved"],
+        allow_private_upload=privacy_settings["allow_private_upload"],
+        private_tier1_allowed=privacy_settings["private_tier1_allowed"],
         spend_cap_available=lambda: _ledger_has_headroom(args.ledger, cap),
     )
     try:
@@ -103,8 +109,7 @@ def run(argv: list[str] | None = None, *, environ: dict[str, str] | None = None,
         return result
     finally:
         trace.close()
-        if limit_store is not None:
-            limit_store.close()
+        limit_store.close()
 
 
 def _require_bot_live_gate(cli_authorized: bool, raw_cap: Any,

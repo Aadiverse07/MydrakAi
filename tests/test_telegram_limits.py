@@ -62,3 +62,43 @@ def test_database_contains_only_user_hash_not_raw_identifier(tmp_path):
     content = path.read_bytes()
     assert raw.encode() not in content
     assert user_hash.encode() in content
+
+
+def test_consent_is_versioned_hashed_persistent_and_revocable(tmp_path):
+    path = tmp_path / "limits.sqlite3"
+    raw = "consent-user-identifier-synthetic"
+    user_hash = sha256(f"mydrak-telegram-v1:user:{raw}".encode()).hexdigest()
+    store = PublicLimitStore(path)
+    assert store.record_consent(user_hash, "private-photo-v1") is False
+    store.record_notice_shown(user_hash, "private-photo-v1")
+    assert store.notice_was_shown(user_hash, "private-photo-v1")
+    assert store.record_consent(user_hash, "private-photo-v1") is True
+    row = store.get_consent(user_hash)
+    assert row is not None and row.user_hash == user_hash
+    assert row.consent_version == "private-photo-v1" and row.revoked_at is None
+    assert store.revoke_consent(user_hash) is True
+    assert store.get_consent(user_hash).revoked_at is not None
+    store.close()
+
+    reopened = PublicLimitStore(path)
+    persisted = reopened.get_consent(user_hash)
+    assert persisted is not None and persisted.revoked_at is not None
+    columns = {
+        row[1] for row in reopened._db.execute("PRAGMA table_info(photo_consents)")
+    }
+    assert columns == {"user_hash", "consent_version", "consented_at", "revoked_at"}
+    reopened.close()
+    content = path.read_bytes()
+    assert raw.encode() not in content
+    assert user_hash.encode() in content
+
+
+def test_consent_rejects_raw_user_id_as_storage_key(tmp_path):
+    store = PublicLimitStore(tmp_path / "limits.sqlite3")
+    try:
+        store.record_notice_shown("raw-id-must-not-be-stored", "private-photo-v1")
+    except ValueError as exc:
+        assert "SHA-256" in str(exc)
+    else:
+        raise AssertionError("raw user ID was accepted as a consent key")
+    store.close()

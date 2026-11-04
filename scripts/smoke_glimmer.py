@@ -1,4 +1,4 @@
-"""One guarded Together Glimmer request using a tiny synthetic JPEG."""
+"""One guarded request to the configured Glimmer host using a synthetic JPEG."""
 
 from _live_smoke import main
 

@@ -8,9 +8,11 @@ KB question for each prompt.
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Literal
 
 from mydrak.reply.composer import ReplyError, compose_reply
+from mydrak.reply.preview import draft_preview_banner, resolve_preview_enabled
 
 MAX_FOLLOWUP_TURNS = 2
 
@@ -57,6 +59,9 @@ def begin_followup(
     safety_card: Mapping[str, Any],
     question_id: str | None = None,
     alternatives: Sequence[str] = (),
+    demo_draft_preview: bool | None = None,
+    public_mode: bool = False,
+    card_path: str | Path | None = None,
 ) -> FollowUpStep:
     """Ask one selected KB question or refer after two completed asks.
 
@@ -66,22 +71,37 @@ def begin_followup(
     the immutable input state.
     """
     _validate_state(state)
-    review_status = card.get("review_status") if isinstance(card, Mapping) else None
-    if (
-        not isinstance(card, Mapping)
-        or card.get("status") != "verified"
-        or not isinstance(review_status, Mapping)
-        or review_status.get("en") != "REVIEWED"
-        or review_status.get("hi") != "REVIEWED"
-    ):
+    if not isinstance(card, Mapping):
         raise FollowUpError("KB card is not approved for farmer-facing replies")
+    preview_enabled = False
+    try:
+        # Final referral remains on the original strict approved-card path and
+        # does not resolve or apply the optional preview setting.
+        if state.turns_used == MAX_FOLLOWUP_TURNS:
+            if card.get("status") != "verified" or not isinstance(card.get("review_status"), Mapping) or any(
+                card["review_status"].get(language) != "REVIEWED" for language in ("en", "hi")
+            ):
+                raise ValueError("KB card is not approved for farmer-facing replies")
+        else:
+            preview_enabled = resolve_preview_enabled(
+                demo_draft_preview, public_mode=public_mode,
+            )
+            draft_preview_banner(
+                card, action="ask", language="en", enabled=preview_enabled,
+                card_path=card_path,
+            )
+    except ValueError as exc:
+        raise FollowUpError(str(exc)) from None
     if state.referred:
         raise FollowUpError("follow-up is already complete")
     if state.awaiting_answer:
         raise FollowUpError("the previous follow-up answer is still pending")
     if state.turns_used == MAX_FOLLOWUP_TURNS:
         try:
-            message = compose_reply("refer", card=card, safety_card=safety_card)
+            message = compose_reply(
+                "refer", card=card, safety_card=safety_card,
+                demo_draft_preview=preview_enabled, public_mode=public_mode,
+            )
         except ReplyError:
             raise FollowUpError("referral reply is unavailable") from None
         next_state = FollowUpState(
@@ -100,6 +120,9 @@ def begin_followup(
             safety_card=safety_card,
             question_id=question_id,
             alternatives=alternatives,
+            demo_draft_preview=preview_enabled,
+            public_mode=public_mode,
+            card_path=card_path,
         )
     except ReplyError:
         raise FollowUpError("selected KB follow-up question is unavailable") from None
